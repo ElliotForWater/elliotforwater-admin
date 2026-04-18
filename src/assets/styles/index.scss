@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    @apply bg-surface text-on-surface;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-white border-none rounded-full px-7 py-2.5 text-sm font-semibold cursor-pointer transition-colors;
+    &:hover { @apply bg-primary-dark; }
+    &:disabled { @apply opacity-60 cursor-not-allowed; }
+  }
+
+  .btn-secondary {
+    @apply bg-white text-primary border border-primary rounded-full px-5 py-2 text-sm font-semibold cursor-pointer transition-colors;
+    &:hover { @apply bg-primary-light; }
+    &:disabled { @apply opacity-60 cursor-not-allowed; }
+  }
+
+  .field-label {
+    @apply text-[11px] font-bold uppercase tracking-wide text-on-surface-variant;
+  }
+
+  .field-input {
+    @apply border border-outline rounded-card px-3 py-2 text-sm text-on-surface bg-white outline-none transition-colors w-full;
+    &:focus { @apply border-primary; }
+  }
+
+  .field-hint {
+    @apply text-[11px] text-on-surface-variant;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-2.5 w-full px-3 py-2 border-none bg-transparent rounded-card text-[13px] font-medium text-on-surface-variant cursor-pointer text-left transition-colors mb-0.5;
+    &:hover { @apply bg-primary-light text-primary; }
+    &.active { @apply bg-primary text-white; }
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  @apply inline-block rounded-full border-2 border-outline;
+  border-top-color: theme('colors.primary.DEFAULT');
+  animation: spin 0.7s linear infinite;
+}

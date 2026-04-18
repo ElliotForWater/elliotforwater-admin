@@ -1,0 +1,85 @@
+<template>
+  <div>
+    <div class="px-9 pt-7">
+      <div class="text-[22px] font-bold text-primary">Notifications</div>
+      <div class="text-[13px] text-on-surface-variant mt-0.5">Send a notification message to all your team members.</div>
+    </div>
+
+    <div class="px-9 py-6 pb-16">
+      <!-- Active notification -->
+      <div v-if="activeNotif" class="bg-primary-light border border-[#9dd0e5] rounded-card px-4 py-3.5 flex items-start justify-between gap-3 mb-4">
+        <div>
+          <div class="text-sm text-on-surface mb-1">{{ activeNotif.message }}</div>
+          <div class="text-[11px] text-on-surface-variant">Sent {{ formatDate(activeNotif.created_at) }}</div>
+        </div>
+        <button class="border border-outline bg-white rounded-lg px-3 py-1 text-xs cursor-pointer text-on-surface-variant whitespace-nowrap transition-colors hover:border-error hover:text-error" @click="clearNotification">
+          Clear
+        </button>
+      </div>
+
+      <!-- Compose -->
+      <Card :title="activeNotif ? 'Replace with new notification' : 'New notification'">
+        <textarea
+          v-model="message"
+          class="w-full border border-outline rounded-card px-3.5 py-3 text-sm font-[inherit] resize-y min-h-[100px] outline-none transition-colors mb-2.5 focus:border-primary"
+          placeholder="e.g. Office closed on Friday — enjoy your long weekend! 🎉"
+          maxlength="280"
+        ></textarea>
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-on-surface-variant">{{ message.length }} / 280</span>
+          <button class="btn-secondary" :disabled="sending || !message.trim()" @click="sendNotification">
+            {{ sending ? 'Sending…' : 'Send to team' }}
+          </button>
+        </div>
+      </Card>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue';
+import { useStore } from 'vuex';
+import Card from '@/components/ui/Card.vue';
+import { supabase } from '@/lib/supabase';
+import { formatDate } from '@/helpers';
+
+const store = useStore();
+const company = computed(() => store.state.company);
+const activeNotif = computed(() => store.state.activeNotif);
+const user = computed(() => store.state.user);
+
+const message = ref('');
+const sending = ref(false);
+
+const sendNotification = async () => {
+  if (!message.value.trim()) return;
+  sending.value = true;
+  try {
+    await supabase.from('notifications').update({ active: false }).eq('email_domain', company.value.email_domain);
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert({ email_domain: company.value.email_domain, message: message.value.trim(), created_by: user.value.email, active: true })
+      .select()
+      .single();
+    if (error) throw error;
+    store.commit('SET_ACTIVE_NOTIF', data);
+    message.value = '';
+    store.dispatch('showStatus', { type: 'success', message: 'Notification sent to your team.' });
+  } catch (e) {
+    store.dispatch('showStatus', { type: 'error', message: 'Failed: ' + e.message });
+  } finally {
+    sending.value = false;
+  }
+};
+
+const clearNotification = async () => {
+  if (!activeNotif.value) return;
+  try {
+    await supabase.from('notifications').update({ active: false }).eq('id', activeNotif.value.id);
+    store.commit('SET_ACTIVE_NOTIF', null);
+    store.dispatch('showStatus', { type: 'success', message: 'Notification cleared.' });
+  } catch (e) {
+    store.dispatch('showStatus', { type: 'error', message: 'Failed: ' + e.message });
+  }
+};
+</script>
