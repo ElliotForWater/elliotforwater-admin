@@ -70,7 +70,7 @@ export default createStore({
         .eq('company_id', profile.id)
         .maybeSingle();
 
-      const company = { ...profile, ...config };
+      const company = { ...profile, ...config, id: profile.id };
       commit('SET_COMPANY', company);
       commit('SET_LINKS', Array.isArray(company.default_links) ? company.default_links : []);
       commit('SET_ACTIVE_NOTIF', company.notifications?.active ? company.notifications : null);
