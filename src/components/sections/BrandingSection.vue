@@ -64,7 +64,7 @@ const company = computed(() => store.state.company);
 
 const name = ref(company.value?.name || '');
 const logoPreview = ref(company.value?.logo_url || '');
-const bgPreview = ref(company.value?.background_url || '');
+const bgPreview = ref(company.value?.bg_image || '');
 const logoFile = ref(null);
 const bgFile = ref(null);
 const saving = ref(false);
@@ -90,7 +90,7 @@ const clearLogo = () => {
 const clearBg = () => {
   bgFile.value = null;
   bgPreview.value = '';
-  store.commit('SET_COMPANY', { ...company.value, background_url: null });
+  store.commit('SET_COMPANY', { ...company.value, bg_image: null });
 };
 
 const uploadFile = async (file, path) => {
@@ -103,8 +103,9 @@ const saveBranding = async () => {
   saving.value = true;
   try {
     let logoUrl = company.value?.logo_url || null;
-    let bgUrl = company.value?.background_url || null;
+    let bgUrl = company.value?.bg_image || null;
     const domain = company.value.email_domain;
+    const companyId = company.value.id;
 
     if (logoFile.value) {
       uploadingLogo.value = true;
@@ -121,18 +122,20 @@ const saveBranding = async () => {
       uploadingBg.value = false;
     }
 
-    const payload = {
-      email_domain: domain,
-      name: name.value.trim() || company.value.name || domain,
-      logo_url: logoUrl,
-      background_url: bgUrl,
-      updated_at: new Date().toISOString(),
-    };
+    const trimmedName = name.value.trim() || company.value.name || domain;
 
-    const { error } = await supabase.from('companies').upsert(payload, { onConflict: 'email_domain' });
-    if (error) throw error;
+    const [profileRes, configRes] = await Promise.all([
+      supabase.from('company_profiles').update({ name: trimmedName }).eq('id', companyId),
+      supabase.from('company_configs').upsert(
+        { company_id: companyId, logo_url: logoUrl, bg_image: bgUrl },
+        { onConflict: 'company_id' }
+      ),
+    ]);
 
-    store.commit('SET_COMPANY', { ...company.value, ...payload });
+    if (profileRes.error) throw profileRes.error;
+    if (configRes.error) throw configRes.error;
+
+    store.commit('SET_COMPANY', { ...company.value, name: trimmedName, logo_url: logoUrl, bg_image: bgUrl });
     store.dispatch('showStatus', { type: 'success', message: 'Branding saved.' });
   } catch (e) {
     store.dispatch('showStatus', { type: 'error', message: 'Failed: ' + e.message });

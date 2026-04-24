@@ -53,25 +53,27 @@ export default createStore({
       commit('SET_USER', user);
       const domain = getDomain(user.email);
 
-      const [companyRes, notifRes] = await Promise.all([
-        supabase.from('companies').select('*').eq('email_domain', domain).single(),
-        supabase
-          .from('notifications')
-          .select('*')
-          .eq('email_domain', domain)
-          .eq('active', true)
-          .order('created_at', { ascending: false })
-          .limit(1),
-      ]);
+      const { data: profile } = await supabase
+        .from('company_profiles')
+        .select('*')
+        .eq('email_domain', domain)
+        .maybeSingle();
 
-      if (!companyRes.data) {
+      if (!profile) {
         commit('SET_AUTH_STATE', 'not-registered');
         return;
       }
 
-      commit('SET_COMPANY', companyRes.data);
-      commit('SET_LINKS', Array.isArray(companyRes.data.default_links) ? companyRes.data.default_links : []);
-      commit('SET_ACTIVE_NOTIF', notifRes.data?.[0] || null);
+      const { data: config } = await supabase
+        .from('company_configs')
+        .select('*')
+        .eq('company_id', profile.id)
+        .maybeSingle();
+
+      const company = { ...profile, ...config };
+      commit('SET_COMPANY', company);
+      commit('SET_LINKS', Array.isArray(company.default_links) ? company.default_links : []);
+      commit('SET_ACTIVE_NOTIF', company.notifications?.active ? company.notifications : null);
       commit('SET_AUTH_STATE', 'admin');
     },
 

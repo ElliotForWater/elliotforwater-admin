@@ -55,14 +55,18 @@ const sendNotification = async () => {
   if (!message.value.trim()) return;
   sending.value = true;
   try {
-    await supabase.from('notifications').update({ active: false }).eq('email_domain', company.value.email_domain);
-    const { data, error } = await supabase
-      .from('notifications')
-      .insert({ email_domain: company.value.email_domain, message: message.value.trim(), created_by: user.value.email, active: true })
-      .select()
-      .single();
+    const notif = {
+      message: message.value.trim(),
+      active: true,
+      created_at: new Date().toISOString(),
+      created_by: user.value.email,
+    };
+    const { error } = await supabase
+      .from('company_configs')
+      .upsert({ company_id: company.value.id, notifications: notif }, { onConflict: 'company_id' });
     if (error) throw error;
-    store.commit('SET_ACTIVE_NOTIF', data);
+    store.commit('SET_ACTIVE_NOTIF', notif);
+    store.commit('SET_COMPANY', { ...company.value, notifications: notif });
     message.value = '';
     store.dispatch('showStatus', { type: 'success', message: 'Notification sent to your team.' });
   } catch (e) {
@@ -75,8 +79,12 @@ const sendNotification = async () => {
 const clearNotification = async () => {
   if (!activeNotif.value) return;
   try {
-    await supabase.from('notifications').update({ active: false }).eq('id', activeNotif.value.id);
+    const { error } = await supabase
+      .from('company_configs')
+      .upsert({ company_id: company.value.id, notifications: { active: false } }, { onConflict: 'company_id' });
+    if (error) throw error;
     store.commit('SET_ACTIVE_NOTIF', null);
+    store.commit('SET_COMPANY', { ...company.value, notifications: { active: false } });
     store.dispatch('showStatus', { type: 'success', message: 'Notification cleared.' });
   } catch (e) {
     store.dispatch('showStatus', { type: 'error', message: 'Failed: ' + e.message });

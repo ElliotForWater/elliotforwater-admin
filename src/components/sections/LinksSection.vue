@@ -71,15 +71,12 @@ const removeLink = (index) => {
 const saveLinks = async () => {
   saving.value = true;
   try {
-    const payload = {
-      email_domain: company.value.email_domain,
-      name: company.value.name || company.value.email_domain,
-      default_links: links.value.filter((l) => l.text || l.link),
-      updated_at: new Date().toISOString(),
-    };
-    const { error } = await supabase.from('companies').upsert(payload, { onConflict: 'email_domain' });
+    const cleanLinks = links.value.filter((l) => l.text || l.link);
+    const { error } = await supabase
+      .from('company_configs')
+      .upsert({ company_id: company.value.id, default_links: cleanLinks }, { onConflict: 'company_id' });
     if (error) throw error;
-    store.commit('SET_LINKS', payload.default_links);
+    store.commit('SET_LINKS', cleanLinks);
     store.dispatch('showStatus', { type: 'success', message: 'Links saved.' });
   } catch (e) {
     store.dispatch('showStatus', { type: 'error', message: 'Failed: ' + e.message });
