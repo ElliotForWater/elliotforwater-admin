@@ -96,7 +96,7 @@ const clearBg = () => {
 const uploadFile = async (file, path) => {
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true, contentType: file.type });
   if (error) throw error;
-  return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+  return `${supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl}?v=${Date.now()}`;
 };
 
 const saveBranding = async () => {
