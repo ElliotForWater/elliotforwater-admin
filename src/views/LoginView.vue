@@ -1,9 +1,7 @@
 <template>
   <div class="min-h-screen flex items-center justify-center" style="background: linear-gradient(135deg, #0d4f64 0%, #116682 60%, #1a8aad 100%)">
     <div class="bg-white rounded-[20px] p-12 w-full max-w-sm shadow-2xl flex flex-col items-center gap-4">
-      <div class="text-[26px] font-bold text-primary">
-        elliot<span class="text-[#1a8aad]">forwater</span>
-      </div>
+      <img src="@/assets/logo.svg" alt="Elliot for Water" class="h-10 w-auto" />
 
       <!-- Not registered -->
       <template v-if="authState === 'not-registered'">

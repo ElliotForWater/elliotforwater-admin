@@ -6,9 +6,7 @@
   >
     <!-- Brand -->
     <div class="px-4 pt-5 pb-4 border-b border-outline">
-      <span class="text-[15px] font-bold text-primary block mb-0.5">
-        elliot<span class="text-[#1a8aad]">forwater</span>
-      </span>
+      <img src="@/assets/logo.svg" alt="Elliot for Water" class="h-6 w-auto mb-1" />
       <span class="text-[11px] text-on-surface-variant bg-primary-light rounded-full px-2 py-0.5 inline-block mt-1">
         @{{ domain }}
       </span>
