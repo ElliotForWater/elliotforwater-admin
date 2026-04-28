@@ -19,6 +19,7 @@
         <!-- Sections -->
         <BrandingSection v-if="currentSection === 'branding'" />
         <LinksSection v-else-if="currentSection === 'links'" />
+        <WidgetsSection v-else-if="currentSection === 'widgets'" />
         <NotificationsSection v-else-if="currentSection === 'notifications'" />
         <TeamSection v-else-if="currentSection === 'team'" />
       </div>
@@ -35,6 +36,7 @@ import BrandingSection from '@/components/sections/BrandingSection.vue';
 import LinksSection from '@/components/sections/LinksSection.vue';
 import NotificationsSection from '@/components/sections/NotificationsSection.vue';
 import TeamSection from '@/components/sections/TeamSection.vue';
+import WidgetsSection from '@/components/sections/WidgetsSection.vue';
 
 const store = useStore();
 const currentSection = computed(() => store.state.currentSection);

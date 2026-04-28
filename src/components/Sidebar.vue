@@ -64,6 +64,7 @@ const domain = computed(() => getDomain(userEmail.value));
 const navItems = [
   { section: 'branding', icon: '🎨', label: 'Branding' },
   { section: 'links', icon: '🔗', label: 'Default Links' },
+  { section: 'widgets', icon: '⬡', label: 'Widgets' },
   { section: 'notifications', icon: '📣', label: 'Notifications' },
 ];
 
