@@ -23,10 +23,17 @@ const store = useStore();
 const authState = computed(() => store.state.authState);
 
 onMounted(async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user) {
-    await store.dispatch('loadAdmin', session.user);
-  } else {
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    if (session?.user) {
+      await store.dispatch('loadAdmin', session.user);
+    } else {
+      store.commit('SET_AUTH_STATE', 'login');
+    }
+  } catch (e) {
+    console.error('[getSession]', e);
+    store.commit('SET_STATUS', { type: 'error', message: 'Could not connect to authentication. Please refresh and try again.' });
     store.commit('SET_AUTH_STATE', 'login');
   }
 

@@ -47,34 +47,44 @@ export default createStore({
   },
   actions: {
     async loadAdmin({ commit }, user) {
-      const { supabase } = await import('@/lib/supabase');
-      const { getDomain } = await import('@/helpers');
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        const { getDomain } = await import('@/helpers');
 
-      commit('SET_USER', user);
-      const domain = getDomain(user.email);
+        commit('SET_USER', user);
+        const domain = getDomain(user.email);
 
-      const { data: profile } = await supabase
-        .from('company_profiles')
-        .select('*')
-        .eq('email_domain', domain)
-        .maybeSingle();
+        const { data: profile, error: profileError } = await supabase
+          .from('company_profiles')
+          .select('*')
+          .eq('email_domain', domain)
+          .maybeSingle();
 
-      if (!profile) {
-        commit('SET_AUTH_STATE', 'not-registered');
-        return;
+        if (profileError) throw profileError;
+
+        if (!profile) {
+          commit('SET_AUTH_STATE', 'not-registered');
+          return;
+        }
+
+        const { data: config, error: configError } = await supabase
+          .from('company_configs')
+          .select('*')
+          .eq('company_id', profile.id)
+          .maybeSingle();
+
+        if (configError) throw configError;
+
+        const company = { ...profile, ...config, id: profile.id };
+        commit('SET_COMPANY', company);
+        commit('SET_LINKS', Array.isArray(company.default_links) ? company.default_links : []);
+        commit('SET_ACTIVE_NOTIF', company.notifications?.active ? company.notifications : null);
+        commit('SET_AUTH_STATE', 'admin');
+      } catch (e) {
+        console.error('[loadAdmin]', e);
+        commit('SET_STATUS', { type: 'error', message: 'Could not load your admin data. Please refresh and try again.' });
+        commit('SET_AUTH_STATE', 'login');
       }
-
-      const { data: config } = await supabase
-        .from('company_configs')
-        .select('*')
-        .eq('company_id', profile.id)
-        .maybeSingle();
-
-      const company = { ...profile, ...config, id: profile.id };
-      commit('SET_COMPANY', company);
-      commit('SET_LINKS', Array.isArray(company.default_links) ? company.default_links : []);
-      commit('SET_ACTIVE_NOTIF', company.notifications?.active ? company.notifications : null);
-      commit('SET_AUTH_STATE', 'admin');
     },
 
     showStatus({ commit }, { type, message }) {
