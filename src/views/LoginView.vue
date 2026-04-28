@@ -18,6 +18,18 @@
         </button>
       </template>
 
+      <!-- Not authorized -->
+      <template v-else-if="authState === 'not-authorized'">
+        <h1 class="text-xl font-semibold">Access denied</h1>
+        <p class="text-[13px] text-on-surface-variant text-center">
+          Your account is not authorised to manage this organisation. Please sign in with the correct admin account or contact
+          <a href="mailto:info@elliotforwater.com" class="text-primary underline">info@elliotforwater.com</a>.
+        </p>
+        <button class="mt-4 w-full py-2.5 border border-outline rounded-full text-sm text-on-surface bg-transparent cursor-pointer hover:bg-surface transition-colors" @click="signOut">
+          Sign out
+        </button>
+      </template>
+
       <!-- Login -->
       <template v-else>
         <h1 class="text-xl font-semibold">Company Admin</h1>

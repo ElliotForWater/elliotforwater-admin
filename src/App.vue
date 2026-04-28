@@ -5,8 +5,8 @@
     <span>Loading…</span>
   </div>
 
-  <!-- Login / Not registered -->
-  <LoginView v-else-if="authState === 'login' || authState === 'not-registered'" />
+  <!-- Login / Not registered / Not authorized -->
+  <LoginView v-else-if="authState === 'login' || authState === 'not-registered' || authState === 'not-authorized'" />
 
   <!-- Admin -->
   <AdminView v-else-if="authState === 'admin'" />

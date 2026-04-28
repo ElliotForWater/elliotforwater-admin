@@ -67,6 +67,11 @@ export default createStore({
           return;
         }
 
+        if (profile.admin_email && profile.admin_email !== user.email) {
+          commit('SET_AUTH_STATE', 'not-authorized');
+          return;
+        }
+
         const { data: config, error: configError } = await supabase
           .from('company_configs')
           .select('*')
