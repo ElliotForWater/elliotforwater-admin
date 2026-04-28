@@ -50,6 +50,29 @@ import { ref, computed } from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/lib/supabase';
 
+const URL_MAX_LENGTH = 2048;
+const LABEL_MAX_LENGTH = 100;
+const UNSAFE_URL = /javascript:|data:|vbscript:|<script/i;
+
+const sanitizeText = (text) => text.replace(/<[^>]*>/g, '').trim();
+
+const validateLink = ({ text, link }) => {
+  const label = sanitizeText(text || '');
+  const url = (link || '').trim();
+  if (!label) return 'Label is required for each link.';
+  if (label.length > LABEL_MAX_LENGTH) return `Label must be under ${LABEL_MAX_LENGTH} characters.`;
+  if (!url) return 'URL is required for each link.';
+  if (url.length > URL_MAX_LENGTH) return `URL must be under ${URL_MAX_LENGTH} characters.`;
+  if (UNSAFE_URL.test(url)) return `"${url}" contains unsafe content.`;
+  try {
+    const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return `"${url}" must use http or https.`;
+  } catch {
+    return `"${url}" is not a valid URL.`;
+  }
+  return null;
+};
+
 const store = useStore();
 const company = computed(() => store.state.company);
 const links = computed({
@@ -69,9 +92,18 @@ const removeLink = (index) => {
 };
 
 const saveLinks = async () => {
+  const nonEmpty = links.value.filter((l) => l.text || l.link);
+  for (const link of nonEmpty) {
+    const err = validateLink(link);
+    if (err) {
+      store.dispatch('showStatus', { type: 'error', message: err });
+      return;
+    }
+  }
+
   saving.value = true;
   try {
-    const cleanLinks = links.value.filter((l) => l.text || l.link);
+    const cleanLinks = nonEmpty.map((l) => ({ text: sanitizeText(l.text), link: l.link.trim() }));
     const { error } = await supabase
       .from('company_configs')
       .upsert({ company_id: company.value.id, default_links: cleanLinks }, { onConflict: 'company_id' });

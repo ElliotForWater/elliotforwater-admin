@@ -99,7 +99,23 @@ const uploadFile = async (file, path) => {
   return `${supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl}?v=${Date.now()}`;
 };
 
+const NAME_MAX_LENGTH = 80;
+const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'image/gif'];
+
+const validateBranding = () => {
+  const trimmed = name.value.trim();
+  if (trimmed.length > NAME_MAX_LENGTH) return `Company name must be under ${NAME_MAX_LENGTH} characters.`;
+  if (logoFile.value && !ALLOWED_IMAGE_TYPES.includes(logoFile.value.type)) return 'Logo must be a PNG, SVG, JPEG, WebP, or GIF image.';
+  if (bgFile.value && !ALLOWED_IMAGE_TYPES.includes(bgFile.value.type)) return 'Background must be a PNG, JPEG, WebP, or GIF image.';
+  return null;
+};
+
 const saveBranding = async () => {
+  const validationError = validateBranding();
+  if (validationError) {
+    store.dispatch('showStatus', { type: 'error', message: validationError });
+    return;
+  }
   saving.value = true;
   try {
     let logoUrl = company.value?.logo_url || null;
