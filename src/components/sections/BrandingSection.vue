@@ -57,17 +57,18 @@ import { ref, computed } from 'vue';
 import { useStore } from 'vuex';
 import Card from '@/components/ui/Card.vue';
 import UploadArea from '@/components/ui/UploadArea.vue';
-import { supabase, BUCKET } from '@/lib/supabase';
+import { useSaveOperation } from '@/composables/useSaveOperation';
+import { uploadFile } from '@/services/uploadService';
 
 const store = useStore();
 const company = computed(() => store.state.company);
+const { saving, save } = useSaveOperation();
 
 const name = ref(company.value?.name || '');
 const logoPreview = ref(company.value?.logo_url || '');
 const bgPreview = ref(company.value?.bg_image || '');
 const logoFile = ref(null);
 const bgFile = ref(null);
-const saving = ref(false);
 const uploadingLogo = ref(false);
 const uploadingBg = ref(false);
 
@@ -93,12 +94,6 @@ const clearBg = () => {
   store.commit('SET_COMPANY', { ...company.value, bg_image: null });
 };
 
-const uploadFile = async (file, path) => {
-  const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true, contentType: file.type });
-  if (error) throw error;
-  return `${supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl}?v=${Date.now()}`;
-};
-
 const NAME_MAX_LENGTH = 80;
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'image/gif'];
 
@@ -116,8 +111,7 @@ const saveBranding = async () => {
     store.dispatch('showStatus', { type: 'error', message: validationError });
     return;
   }
-  saving.value = true;
-  try {
+  await save(async () => {
     let logoUrl = company.value?.logo_url || null;
     let bgUrl = company.value?.bg_image || null;
     const domain = company.value.email_domain;
@@ -140,6 +134,7 @@ const saveBranding = async () => {
 
     const trimmedName = name.value.trim() || company.value.name || domain;
 
+    const { supabase } = await import('@/lib/supabase');
     const [profileRes, configRes] = await Promise.all([
       supabase.from('company_profiles').update({ name: trimmedName }).eq('id', companyId),
       supabase.from('company_configs').upsert(
@@ -153,12 +148,8 @@ const saveBranding = async () => {
 
     store.commit('SET_COMPANY', { ...company.value, name: trimmedName, logo_url: logoUrl, bg_image: bgUrl });
     store.dispatch('showStatus', { type: 'success', message: 'Branding saved.' });
-  } catch (e) {
-    store.dispatch('showStatus', { type: 'error', message: 'Failed: ' + e.message });
-  } finally {
-    saving.value = false;
-    uploadingLogo.value = false;
-    uploadingBg.value = false;
-  }
+  });
+  uploadingLogo.value = false;
+  uploadingBg.value = false;
 };
 </script>
