@@ -10,9 +10,11 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
     "@tailwindcss/container-queries": "^0.1.1",
+    "dompurify": "^3.4.2",
     "file-type": "^22.0.1",
     "floating-vue": "^5.2.2",
     "lodash.isequal": "^4.5.0",
+    "validator": "^13.15.35",
     "vue": "^3.2.13",
     "vuex": "^4.0.0",
     "vuex-persist": "^3.1.3"
@@ -20,6 +22,7 @@
   "devDependencies": {
     "@babel/core": "^7.12.16",
     "@babel/eslint-parser": "^7.12.16",
+    "@types/dompurify": "^3.0.5",
     "@vue/cli-plugin-babel": "~5.0.0",
     "@vue/cli-plugin-eslint": "~5.0.0",
     "@vue/cli-service": "~5.0.0",
