@@ -19,8 +19,9 @@
           <UploadArea
             :preview-url="logoPreview"
             icon="🖼️"
-            hint="PNG, SVG with transparent background"
+            hint="PNG, SVG — max 1MB"
             label="Logo"
+            :max-bytes="1 * 1024 * 1024"
             :uploading="uploadingLogo"
             @file-selected="onLogoSelected"
             @clear="clearLogo"
@@ -32,9 +33,10 @@
           <UploadArea
             :preview-url="bgPreview"
             icon="🌄"
-            hint="JPG, WebP"
+            hint="JPG, WebP — max 2MB"
             label="Background"
             :cover="true"
+            :max-bytes="2 * 1024 * 1024"
             :uploading="uploadingBg"
             @file-selected="onBgSelected"
             @clear="clearBg"
@@ -95,13 +97,10 @@ const clearBg = () => {
 };
 
 const NAME_MAX_LENGTH = 80;
-const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'image/gif'];
 
 const validateBranding = () => {
   const trimmed = name.value.trim();
   if (trimmed.length > NAME_MAX_LENGTH) return `Company name must be under ${NAME_MAX_LENGTH} characters.`;
-  if (logoFile.value && !ALLOWED_IMAGE_TYPES.includes(logoFile.value.type)) return 'Logo must be a PNG, SVG, JPEG, WebP, or GIF image.';
-  if (bgFile.value && !ALLOWED_IMAGE_TYPES.includes(bgFile.value.type)) return 'Background must be a PNG, JPEG, WebP, or GIF image.';
   return null;
 };
 
@@ -119,15 +118,13 @@ const saveBranding = async () => {
 
     if (logoFile.value) {
       uploadingLogo.value = true;
-      const ext = logoFile.value.name.split('.').pop();
-      logoUrl = await uploadFile(logoFile.value, `${domain}/logo.${ext}`);
+      logoUrl = await uploadFile(logoFile.value, `${domain}/logo`, 'logo');
       logoFile.value = null;
       uploadingLogo.value = false;
     }
     if (bgFile.value) {
       uploadingBg.value = true;
-      const ext = bgFile.value.name.split('.').pop();
-      bgUrl = await uploadFile(bgFile.value, `${domain}/background.${ext}`);
+      bgUrl = await uploadFile(bgFile.value, `${domain}/background`, 'background');
       bgFile.value = null;
       uploadingBg.value = false;
     }

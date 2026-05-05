@@ -10,6 +10,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
     "@tailwindcss/container-queries": "^0.1.1",
+    "file-type": "^22.0.1",
     "floating-vue": "^5.2.2",
     "lodash.isequal": "^4.5.0",
     "vue": "^3.2.13",
@@ -32,12 +33,25 @@
   },
   "eslintConfig": {
     "root": true,
-    "env": { "node": true, "vue/setup-compiler-macros": true },
-    "extends": ["plugin:vue/vue3-essential", "eslint:recommended"],
-    "parserOptions": { "parser": "@babel/eslint-parser" },
+    "env": {
+      "node": true,
+      "vue/setup-compiler-macros": true
+    },
+    "extends": [
+      "plugin:vue/vue3-essential",
+      "eslint:recommended"
+    ],
+    "parserOptions": {
+      "parser": "@babel/eslint-parser"
+    },
     "rules": {
       "vue/multi-word-component-names": "off"
     }
   },
-  "browserslist": ["> 1%", "last 2 versions", "not dead", "not ie 11"]
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ]
 }
