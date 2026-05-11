@@ -98,9 +98,12 @@ const updateSessionAge = () => {
   sessionAge.value = h > 0 ? `${h}h ${m}m` : `${m}m`;
 };
 
-const analytics = ref(getAnalytics());
-const ageTick = setInterval(() => { updateSessionAge(); analytics.value = getAnalytics(); }, 60_000);
-onMounted(updateSessionAge);
+const analytics = ref(null);
+const loadAnalytics = async () => {
+  analytics.value = await getAnalytics(store.state.user?.id);
+};
+const ageTick = setInterval(() => { updateSessionAge(); loadAnalytics(); }, 60_000);
+onMounted(() => { updateSessionAge(); loadAnalytics(); });
 onUnmounted(() => clearInterval(ageTick));
 
 const navItems = [

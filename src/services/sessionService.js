@@ -1,7 +1,7 @@
 import { ref, watch, onUnmounted } from 'vue';
 import { useIdle } from '@vueuse/core';
 import { supabase } from '@/lib/supabase';
-import { recordSessionEnd } from '@/services/sessionAnalytics';
+import { recordSessionEnd, getActiveSessions, SESSION_ID } from '@/services/sessionAnalytics';
 
 const ABSOLUTE_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours
 const IDLE_TIMEOUT = 30 * 60 * 1000;          // 30 minutes
@@ -42,7 +42,7 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
   };
   window.addEventListener('online', onOnline);
 
-  const checkTimeout = () => {
+  const checkTimeout = async () => {
     const now = Date.now();
     const absoluteRemaining = ABSOLUTE_TIMEOUT - (now - sessionStart.value);
     const idleRemaining = IDLE_TIMEOUT - (now - lastActive.value);
@@ -61,6 +61,23 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
       onShowWarning?.();
     }
 
+    // Report significant events to anomaly detection Edge Function
+    await reportEvent('SESSION_CHECK', store?.state.session?.fingerprint);
+
+    // Concurrent session detection
+    const userId = store?.state.user?.id;
+    if (userId) {
+      const active = await getActiveSessions(userId);
+      const others = active.filter((s) => s.session_id !== SESSION_ID);
+      if (others.length > 0) {
+        store?.dispatch('logSessionEvent', { type: 'CONCURRENT_SESSION', meta: { count: others.length } });
+        store?.commit('SET_STATUS', {
+          type: 'error',
+          message: `Your account is active in ${others.length} other session(s). Sign out of other devices if this wasn't you.`,
+        });
+      }
+    }
+
     // Fingerprint mismatch detection
     if (store?.state.session?.fingerprint) {
       const current = generateFingerprint();
@@ -68,6 +85,7 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
         fingerprintMismatches.value += 1;
         store?.dispatch('logSessionEvent', { type: 'FINGERPRINT_MISMATCH', meta: { count: fingerprintMismatches.value } });
 
+        await reportEvent('FINGERPRINT_MISMATCH', current);
         if (fingerprintMismatches.value >= MAX_FINGERPRINT_MISMATCHES) {
           store?.commit('SET_STATUS', { type: 'error', message: 'Unusual session activity detected. You have been signed out for your security.' });
           performLogout('fingerprint-mismatch');
@@ -134,6 +152,24 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
     sessionStart,
     lastActive,
   };
+}
+
+async function reportEvent(event, fingerprint = null) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const url = `${process.env.VUE_APP_SUPABASE_URL}/functions/v1/session-monitor`;
+    await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ event, fingerprint }),
+    });
+  } catch (e) {
+    console.warn('[session] reportEvent failed:', e.message);
+  }
 }
 
 function generateFingerprint() {

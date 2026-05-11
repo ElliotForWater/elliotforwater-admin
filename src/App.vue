@@ -61,7 +61,8 @@ provide('sessionManager', { performLogout, extendSession });
 watch(authState, (state, prev) => {
   if (state === 'admin' && prev !== 'admin') {
     store.dispatch('startSession');
-    recordSessionStart(store.state.user?.id);
+    const fingerprint = store.state.session?.fingerprint;
+    recordSessionStart(store.state.user?.id, fingerprint);
   }
 });
 
