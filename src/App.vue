@@ -21,7 +21,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, provide, watch, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import LoginView from '@/views/LoginView.vue';
 import AdminView from '@/views/AdminView.vue';
@@ -36,6 +36,7 @@ const showSessionWarning = ref(false);
 const sessionTimeRemaining = ref(0);
 
 const { extendSession, performLogout, timeRemaining } = useSessionManager({
+  store,
   onShowWarning: () => {
     sessionTimeRemaining.value = timeRemaining.value;
     showSessionWarning.value = true;
@@ -45,15 +46,21 @@ const { extendSession, performLogout, timeRemaining } = useSessionManager({
   },
   onLogout: (reason) => {
     showSessionWarning.value = false;
-    store.commit('SET_USER', null);
-    store.commit('SET_COMPANY', null);
-    store.commit('SET_LINKS', []);
-    store.commit('SET_ACTIVE_NOTIF', null);
     store.commit('SET_AUTH_STATE', 'login');
     if (reason !== 'manual') {
       store.commit('SET_STATUS', { type: 'error', message: 'You were signed out due to inactivity.' });
     }
   },
+});
+
+// Make session manager available to child components (e.g. Sidebar)
+provide('sessionManager', { performLogout, extendSession });
+
+// Start session tracking when user logs in
+watch(authState, (state) => {
+  if (state === 'admin') {
+    store.dispatch('startSession');
+  }
 });
 
 const onExtendSession = async () => {
@@ -84,10 +91,6 @@ onMounted(async () => {
     if (event === 'SIGNED_IN' && session?.user && store.state.authState !== 'admin') {
       await store.dispatch('loadAdmin', session.user);
     } else if (event === 'SIGNED_OUT') {
-      store.commit('SET_USER', null);
-      store.commit('SET_COMPANY', null);
-      store.commit('SET_LINKS', []);
-      store.commit('SET_ACTIVE_NOTIF', null);
       store.commit('SET_AUTH_STATE', 'login');
     }
   });

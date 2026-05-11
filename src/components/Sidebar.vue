@@ -27,7 +27,7 @@
 
     <!-- Footer -->
     <div class="border-t border-outline p-3.5">
-      <div class="flex items-center gap-2.5 mb-2.5">
+      <div class="flex items-center gap-2.5 mb-2">
         <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-[13px] font-semibold flex-shrink-0">
           {{ initials }}
         </div>
@@ -36,23 +36,41 @@
           <div class="text-[11px] text-on-surface-variant truncate">{{ userEmail }}</div>
         </div>
       </div>
-      <button class="w-full py-1.5 border border-outline rounded-card text-[13px] text-on-surface-variant cursor-pointer transition-colors hover:border-error hover:text-error" @click="signOut">
+
+      <!-- Session status indicator -->
+      <div class="flex items-center gap-1.5 mb-2.5 px-0.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></span>
+        <span class="text-[11px] text-on-surface-variant">Session active · {{ sessionAge }}</span>
+      </div>
+
+      <button
+        class="w-full py-1.5 border border-outline rounded-card text-[13px] text-on-surface-variant cursor-pointer transition-colors hover:border-error hover:text-error"
+        @click="showLogoutConfirm = true"
+      >
         Sign out
       </button>
     </div>
   </aside>
+
+  <LogoutConfirmModal
+    v-if="showLogoutConfirm"
+    @confirm="onLogoutConfirmed"
+    @cancel="showLogoutConfirm = false"
+  />
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { ref, computed, inject, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
-import { supabase } from '@/lib/supabase';
 import { getInitials, getDomain } from '@/helpers';
+import LogoutConfirmModal from '@/components/ui/LogoutConfirmModal.vue';
 
 defineProps({ open: Boolean });
 const emit = defineEmits(['close']);
 
 const store = useStore();
+const sessionManager = inject('sessionManager', null);
+
 const user = computed(() => store.state.user);
 const currentSection = computed(() => store.state.currentSection);
 
@@ -60,6 +78,23 @@ const userName = computed(() => user.value?.user_metadata?.full_name || user.val
 const userEmail = computed(() => user.value?.email || '');
 const initials = computed(() => getInitials(userName.value));
 const domain = computed(() => getDomain(userEmail.value));
+
+const showLogoutConfirm = ref(false);
+
+// Session age display (e.g. "2h 15m")
+const sessionAge = ref('');
+const updateSessionAge = () => {
+  const startedAt = store.state.session?.startedAt;
+  if (!startedAt) { sessionAge.value = ''; return; }
+  const ms = Date.now() - startedAt;
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  sessionAge.value = h > 0 ? `${h}h ${m}m` : `${m}m`;
+};
+
+const ageTick = setInterval(updateSessionAge, 60_000);
+onMounted(updateSessionAge);
+onUnmounted(() => clearInterval(ageTick));
 
 const navItems = [
   { section: 'branding', icon: '🎨', label: 'Branding' },
@@ -74,7 +109,10 @@ const navigate = (section) => {
   emit('close');
 };
 
-const signOut = async () => {
-  await supabase.auth.signOut();
+const onLogoutConfirmed = async () => {
+  showLogoutConfirm.value = false;
+  if (sessionManager) {
+    await sessionManager.performLogout('manual');
+  }
 };
 </script>

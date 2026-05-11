@@ -7,17 +7,25 @@ const IDLE_TIMEOUT = 30 * 60 * 1000;          // 30 minutes
 const WARNING_BEFORE = 5 * 60 * 1000;         // warn 5 min before expiry
 const CHECK_INTERVAL = 30_000;                 // check every 30 seconds
 
-export function useSessionManager({ onLogout, onShowWarning, onHideWarning } = {}) {
-  const sessionStart = ref(Date.now());
+export function useSessionManager({ store, onLogout, onShowWarning, onHideWarning } = {}) {
+  const sessionStart = ref(store?.state.session?.startedAt || Date.now());
   const warningShown = ref(false);
   const timeRemaining = ref(0);
 
   const { idle, lastActive } = useIdle(IDLE_TIMEOUT);
 
-  // When VueUse marks user as idle the full IDLE_TIMEOUT has elapsed — force logout
+  // Force logout when VueUse confirms idle timeout elapsed
   watch(idle, (isIdle) => {
     if (isIdle) performLogout('idle');
   });
+
+  // Multi-tab sync: if another tab clears localStorage (e.g. signs out), log out here too
+  const onStorageChange = (e) => {
+    if (e.key === 'elliotforwater-admin' && !e.newValue) {
+      performLogout('other-tab');
+    }
+  };
+  window.addEventListener('storage', onStorageChange);
 
   const checkTimeout = () => {
     const now = Date.now();
@@ -34,7 +42,17 @@ export function useSessionManager({ onLogout, onShowWarning, onHideWarning } = {
 
     if (remaining <= WARNING_BEFORE && !warningShown.value) {
       warningShown.value = true;
+      store?.dispatch('logSessionEvent', { type: 'SESSION_WARNING', meta: { remaining } });
       onShowWarning?.();
+    }
+
+    // Check for session fingerprint mismatch (potential hijack)
+    if (store?.state.session?.fingerprint) {
+      const current = generateFingerprint();
+      if (current !== store.state.session.fingerprint) {
+        store?.dispatch('logSessionEvent', { type: 'FINGERPRINT_MISMATCH', meta: { current } });
+        console.warn('[session] Fingerprint mismatch — possible session anomaly');
+      }
     }
   };
 
@@ -44,36 +62,43 @@ export function useSessionManager({ onLogout, onShowWarning, onHideWarning } = {
     try {
       await supabase.auth.refreshSession();
     } catch (e) {
-      console.warn('[sessionService] refresh failed:', e.message);
+      console.warn('[session] refresh failed:', e.message);
     }
     sessionStart.value = Date.now();
+    store?.commit('SET_SESSION', { startedAt: sessionStart.value });
+    store?.dispatch('logSessionEvent', { type: 'SESSION_EXTENDED' });
     warningShown.value = false;
     onHideWarning?.();
   };
 
   const performLogout = async (reason = 'manual') => {
     clearInterval(intervalId);
-    logSessionEvent('SESSION_ENDED', { reason });
+    window.removeEventListener('storage', onStorageChange);
     try {
       await supabase.auth.signOut();
     } catch (e) {
-      console.warn('[sessionService] signOut error:', e.message);
+      console.warn('[session] signOut error:', e.message);
     }
     sessionStorage.clear();
     localStorage.removeItem('elliotforwater-admin');
+    store?.dispatch('endSession', reason);
     onLogout?.(reason);
   };
 
   const validateSession = async () => {
     const { data: { session }, error } = await supabase.auth.getSession();
     if (error || !session) {
+      store?.dispatch('logSessionEvent', { type: 'SESSION_INVALID' });
       await performLogout('invalid');
       return false;
     }
     return true;
   };
 
-  onUnmounted(() => clearInterval(intervalId));
+  onUnmounted(() => {
+    clearInterval(intervalId);
+    window.removeEventListener('storage', onStorageChange);
+  });
 
   return {
     extendSession,
@@ -86,6 +111,15 @@ export function useSessionManager({ onLogout, onShowWarning, onHideWarning } = {
   };
 }
 
-function logSessionEvent(event, meta = {}) {
-  console.info(`[session] ${event}`, { ...meta, ts: new Date().toISOString() });
+function generateFingerprint() {
+  try {
+    return btoa([
+      navigator.userAgent,
+      `${screen.width}x${screen.height}`,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      navigator.language,
+    ].join('|'));
+  } catch {
+    return 'unknown';
+  }
 }

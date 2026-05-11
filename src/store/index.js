@@ -6,6 +6,7 @@ const vuexLocal = new VuexPersistence({
   key: 'elliotforwater-admin',
   reducer: (state) => ({
     currentSection: state.currentSection,
+    session: state.session,
   }),
 });
 
@@ -18,6 +19,11 @@ export default createStore({
     activeNotif: null,
     currentSection: 'branding',
     status: null, // { type: 'success' | 'error', message: string }
+    session: {
+      startedAt: null,       // timestamp when session began
+      fingerprint: null,     // browser fingerprint at login
+      events: [],            // in-session event log (not persisted)
+    },
   },
   mutations: {
     SET_AUTH_STATE(state, payload) {
@@ -43,6 +49,15 @@ export default createStore({
     },
     CLEAR_STATUS(state) {
       state.status = null;
+    },
+    SET_SESSION(state, payload) {
+      state.session = { ...state.session, ...payload };
+    },
+    LOG_SESSION_EVENT(state, event) {
+      state.session.events = [...(state.session.events || []).slice(-49), event];
+    },
+    CLEAR_SESSION(state) {
+      state.session = { startedAt: null, fingerprint: null, events: [] };
     },
   },
   actions: {
@@ -98,6 +113,42 @@ export default createStore({
         setTimeout(() => commit('CLEAR_STATUS'), 6000);
       }
     },
+
+    startSession({ commit }) {
+      const fingerprint = generateFingerprint();
+      commit('SET_SESSION', { startedAt: Date.now(), fingerprint, events: [] });
+      commit('LOG_SESSION_EVENT', sessionEvent('SESSION_STARTED'));
+    },
+
+    logSessionEvent({ commit }, { type, meta }) {
+      commit('LOG_SESSION_EVENT', sessionEvent(type, meta));
+    },
+
+    endSession({ commit }, reason = 'manual') {
+      commit('LOG_SESSION_EVENT', sessionEvent('SESSION_ENDED', { reason }));
+      commit('CLEAR_SESSION');
+      commit('SET_USER', null);
+      commit('SET_COMPANY', null);
+      commit('SET_LINKS', []);
+      commit('SET_ACTIVE_NOTIF', null);
+    },
   },
   plugins: [vuexLocal.plugin],
 });
+
+function generateFingerprint() {
+  try {
+    return btoa([
+      navigator.userAgent,
+      `${screen.width}x${screen.height}`,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      navigator.language,
+    ].join('|'));
+  } catch {
+    return 'unknown';
+  }
+}
+
+function sessionEvent(type, meta = {}) {
+  return { type, ts: new Date().toISOString(), ...meta };
+}
