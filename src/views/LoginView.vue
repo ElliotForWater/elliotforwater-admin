@@ -43,6 +43,11 @@
           <GoogleIcon v-else />
           {{ signingIn ? 'Signing in…' : 'Sign in with Google' }}
         </button>
+
+        <label class="flex items-center gap-2 text-[12px] text-on-surface-variant cursor-pointer select-none mt-1">
+          <input v-model="rememberMe" type="checkbox" class="w-3.5 h-3.5 accent-primary" />
+          Remember me on this device
+        </label>
       </template>
     </div>
   </div>
@@ -57,8 +62,10 @@ import GoogleIcon from '@/components/ui/GoogleIcon.vue';
 const store = useStore();
 const authState = computed(() => store.state.authState);
 const signingIn = ref(false);
+const rememberMe = ref(localStorage.getItem('efw-remember-me') !== 'false');
 
 const signIn = async () => {
+  localStorage.setItem('efw-remember-me', rememberMe.value ? 'true' : 'false');
   signingIn.value = true;
   await supabase.auth.signInWithOAuth({
     provider: 'google',

@@ -38,10 +38,15 @@
       </div>
 
       <!-- Session status indicator -->
-      <div class="flex items-center gap-1.5 mb-2.5 px-0.5">
+      <div class="flex items-center gap-1.5 mb-1 px-0.5">
         <span class="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></span>
         <span class="text-[11px] text-on-surface-variant">Session active · {{ sessionAge }}</span>
       </div>
+      <!-- Session analytics -->
+      <div v-if="analytics" class="text-[10px] text-on-surface-variant px-0.5 mb-2.5 leading-relaxed">
+        {{ analytics.sessionsThisWeek }} sessions this week · avg {{ formatDuration(analytics.avgDurationMs) }}
+      </div>
+      <div v-else class="mb-2.5"></div>
 
       <button
         class="w-full py-1.5 border border-outline rounded-card text-[13px] text-on-surface-variant cursor-pointer transition-colors hover:border-error hover:text-error"
@@ -64,6 +69,7 @@ import { ref, computed, inject, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
 import { getInitials, getDomain } from '@/helpers';
 import LogoutConfirmModal from '@/components/ui/LogoutConfirmModal.vue';
+import { getAnalytics, formatDuration } from '@/services/sessionAnalytics';
 
 defineProps({ open: Boolean });
 const emit = defineEmits(['close']);
@@ -92,7 +98,8 @@ const updateSessionAge = () => {
   sessionAge.value = h > 0 ? `${h}h ${m}m` : `${m}m`;
 };
 
-const ageTick = setInterval(updateSessionAge, 60_000);
+const analytics = ref(getAnalytics());
+const ageTick = setInterval(() => { updateSessionAge(); analytics.value = getAnalytics(); }, 60_000);
 onMounted(updateSessionAge);
 onUnmounted(() => clearInterval(ageTick));
 

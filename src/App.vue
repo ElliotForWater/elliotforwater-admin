@@ -28,6 +28,7 @@ import AdminView from '@/views/AdminView.vue';
 import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal.vue';
 import { supabase } from '@/lib/supabase';
 import { useSessionManager } from '@/services/sessionService';
+import { recordSessionStart } from '@/services/sessionAnalytics';
 
 const store = useStore();
 const authState = computed(() => store.state.authState);
@@ -57,9 +58,10 @@ const { extendSession, performLogout, timeRemaining } = useSessionManager({
 provide('sessionManager', { performLogout, extendSession });
 
 // Start session tracking when user logs in
-watch(authState, (state) => {
-  if (state === 'admin') {
+watch(authState, (state, prev) => {
+  if (state === 'admin' && prev !== 'admin') {
     store.dispatch('startSession');
+    recordSessionStart(store.state.user?.id);
   }
 });
 
@@ -90,6 +92,10 @@ onMounted(async () => {
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session?.user && store.state.authState !== 'admin') {
       await store.dispatch('loadAdmin', session.user);
+      // If "Remember me" is off, sign out when the tab closes
+      if (localStorage.getItem('efw-remember-me') === 'false') {
+        window.addEventListener('beforeunload', () => supabase.auth.signOut(), { once: true });
+      }
     } else if (event === 'SIGNED_OUT') {
       store.commit('SET_AUTH_STATE', 'login');
     }

@@ -1,16 +1,19 @@
 import { ref, watch, onUnmounted } from 'vue';
 import { useIdle } from '@vueuse/core';
 import { supabase } from '@/lib/supabase';
+import { recordSessionEnd } from '@/services/sessionAnalytics';
 
 const ABSOLUTE_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours
 const IDLE_TIMEOUT = 30 * 60 * 1000;          // 30 minutes
 const WARNING_BEFORE = 5 * 60 * 1000;         // warn 5 min before expiry
 const CHECK_INTERVAL = 30_000;                 // check every 30 seconds
+const MAX_FINGERPRINT_MISMATCHES = 3;          // alert after this many mismatches
 
 export function useSessionManager({ store, onLogout, onShowWarning, onHideWarning } = {}) {
   const sessionStart = ref(store?.state.session?.startedAt || Date.now());
   const warningShown = ref(false);
   const timeRemaining = ref(0);
+  const fingerprintMismatches = ref(0);
 
   const { idle, lastActive } = useIdle(IDLE_TIMEOUT);
 
@@ -19,13 +22,25 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
     if (isIdle) performLogout('idle');
   });
 
-  // Multi-tab sync: if another tab clears localStorage (e.g. signs out), log out here too
+  // Multi-tab sync: if another tab signs out (removes localStorage), log out here too
   const onStorageChange = (e) => {
     if (e.key === 'elliotforwater-admin' && !e.newValue) {
       performLogout('other-tab');
     }
   };
   window.addEventListener('storage', onStorageChange);
+
+  // Network recovery: revalidate session when coming back online
+  const onOnline = async () => {
+    store?.dispatch('logSessionEvent', { type: 'NETWORK_RESTORED' });
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error || !session) {
+      performLogout('network-invalid');
+    } else {
+      store?.dispatch('logSessionEvent', { type: 'SESSION_REVALIDATED' });
+    }
+  };
+  window.addEventListener('online', onOnline);
 
   const checkTimeout = () => {
     const now = Date.now();
@@ -46,12 +61,19 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
       onShowWarning?.();
     }
 
-    // Check for session fingerprint mismatch (potential hijack)
+    // Fingerprint mismatch detection
     if (store?.state.session?.fingerprint) {
       const current = generateFingerprint();
       if (current !== store.state.session.fingerprint) {
-        store?.dispatch('logSessionEvent', { type: 'FINGERPRINT_MISMATCH', meta: { current } });
-        console.warn('[session] Fingerprint mismatch — possible session anomaly');
+        fingerprintMismatches.value += 1;
+        store?.dispatch('logSessionEvent', { type: 'FINGERPRINT_MISMATCH', meta: { count: fingerprintMismatches.value } });
+
+        if (fingerprintMismatches.value >= MAX_FINGERPRINT_MISMATCHES) {
+          store?.commit('SET_STATUS', { type: 'error', message: 'Unusual session activity detected. You have been signed out for your security.' });
+          performLogout('fingerprint-mismatch');
+        } else {
+          store?.commit('SET_STATUS', { type: 'error', message: 'Unusual session activity detected. Please verify your identity.' });
+        }
       }
     }
   };
@@ -74,6 +96,8 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
   const performLogout = async (reason = 'manual') => {
     clearInterval(intervalId);
     window.removeEventListener('storage', onStorageChange);
+    window.removeEventListener('online', onOnline);
+    recordSessionEnd(reason);
     try {
       await supabase.auth.signOut();
     } catch (e) {
@@ -98,6 +122,7 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
   onUnmounted(() => {
     clearInterval(intervalId);
     window.removeEventListener('storage', onStorageChange);
+    window.removeEventListener('online', onOnline);
   });
 
   return {
