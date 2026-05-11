@@ -10,17 +10,60 @@
 
   <!-- Admin -->
   <AdminView v-else-if="authState === 'admin'" />
+
+  <!-- Session timeout warning -->
+  <SessionTimeoutModal
+    v-if="showSessionWarning && authState === 'admin'"
+    :time-remaining="sessionTimeRemaining"
+    @extend="onExtendSession"
+    @logout="onSessionLogout"
+  />
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import LoginView from '@/views/LoginView.vue';
 import AdminView from '@/views/AdminView.vue';
+import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal.vue';
 import { supabase } from '@/lib/supabase';
+import { useSessionManager } from '@/services/sessionService';
 
 const store = useStore();
 const authState = computed(() => store.state.authState);
+
+const showSessionWarning = ref(false);
+const sessionTimeRemaining = ref(0);
+
+const { extendSession, performLogout, timeRemaining } = useSessionManager({
+  onShowWarning: () => {
+    sessionTimeRemaining.value = timeRemaining.value;
+    showSessionWarning.value = true;
+  },
+  onHideWarning: () => {
+    showSessionWarning.value = false;
+  },
+  onLogout: (reason) => {
+    showSessionWarning.value = false;
+    store.commit('SET_USER', null);
+    store.commit('SET_COMPANY', null);
+    store.commit('SET_LINKS', []);
+    store.commit('SET_ACTIVE_NOTIF', null);
+    store.commit('SET_AUTH_STATE', 'login');
+    if (reason !== 'manual') {
+      store.commit('SET_STATUS', { type: 'error', message: 'You were signed out due to inactivity.' });
+    }
+  },
+});
+
+const onExtendSession = async () => {
+  showSessionWarning.value = false;
+  await extendSession();
+};
+
+const onSessionLogout = async () => {
+  await performLogout('manual');
+};
 
 onMounted(async () => {
   try {
