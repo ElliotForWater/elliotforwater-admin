@@ -42,6 +42,8 @@ import { useStore } from 'vuex';
 import Card from '@/components/ui/Card.vue';
 import { supabase } from '@/lib/supabase';
 import { formatDate } from '@/helpers';
+import { auditLog, AUDIT_EVENTS } from '@/services/auditService';
+import { ErrorHandler } from '@/services/errorHandler';
 
 const store = useStore();
 const company = computed(() => store.state.company);
@@ -68,9 +70,11 @@ const sendNotification = async () => {
     store.commit('SET_ACTIVE_NOTIF', notif);
     store.commit('SET_COMPANY', { ...company.value, notifications: notif });
     message.value = '';
+    await auditLog(AUDIT_EVENTS.DATA_CREATED, { section: 'notifications', createdBy: user.value.email });
     store.dispatch('showStatus', { type: 'success', message: 'Notification sent to your team.' });
   } catch (e) {
-    store.dispatch('showStatus', { type: 'error', message: 'Failed: ' + e.message });
+    const { userMessage } = ErrorHandler.handle(e, { section: 'notifications', action: 'send' });
+    store.dispatch('showStatus', { type: 'error', message: userMessage });
   } finally {
     sending.value = false;
   }
@@ -85,9 +89,11 @@ const clearNotification = async () => {
     if (error) throw error;
     store.commit('SET_ACTIVE_NOTIF', null);
     store.commit('SET_COMPANY', { ...company.value, notifications: { active: false } });
+    await auditLog(AUDIT_EVENTS.DATA_DELETED, { section: 'notifications' });
     store.dispatch('showStatus', { type: 'success', message: 'Notification cleared.' });
   } catch (e) {
-    store.dispatch('showStatus', { type: 'error', message: 'Failed: ' + e.message });
+    const { userMessage } = ErrorHandler.handle(e, { section: 'notifications', action: 'clear' });
+    store.dispatch('showStatus', { type: 'error', message: userMessage });
   }
 };
 </script>

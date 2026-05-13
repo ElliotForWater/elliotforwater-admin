@@ -65,6 +65,7 @@ export default createStore({
       try {
         const { supabase } = await import('@/lib/supabase');
         const { getDomain } = await import('@/helpers');
+        const { setAuditContext, auditLog, AUDIT_EVENTS } = await import('@/services/auditService');
 
         commit('SET_USER', user);
         const domain = getDomain(user.email);
@@ -84,6 +85,7 @@ export default createStore({
 
         if (profile.admin_email && profile.admin_email !== user.email) {
           commit('SET_AUTH_STATE', 'not-authorized');
+          await auditLog(AUDIT_EVENTS.PERMISSION_DENIED, { email: user.email, domain });
           return;
         }
 
@@ -100,8 +102,11 @@ export default createStore({
         commit('SET_LINKS', Array.isArray(company.default_links) ? company.default_links : []);
         commit('SET_ACTIVE_NOTIF', company.notifications?.active ? company.notifications : null);
         commit('SET_AUTH_STATE', 'admin');
+
+        setAuditContext(user.id, profile.id);
+        await auditLog(AUDIT_EVENTS.USER_LOGIN, { email: user.email, domain });
       } catch (e) {
-        console.error('[loadAdmin]', e);
+        if (process.env.NODE_ENV !== 'production') console.warn('[loadAdmin]', e);
         commit('SET_STATUS', { type: 'error', message: 'Could not load your admin data. Please refresh and try again.' });
         commit('SET_AUTH_STATE', 'login');
       }

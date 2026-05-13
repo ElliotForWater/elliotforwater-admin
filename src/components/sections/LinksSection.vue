@@ -83,6 +83,8 @@ import { useStore } from 'vuex';
 import DOMPurify from 'dompurify';
 import validator from 'validator';
 import { supabase } from '@/lib/supabase';
+import { auditLog, AUDIT_EVENTS } from '@/services/auditService';
+import { ErrorHandler } from '@/services/errorHandler';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -323,9 +325,11 @@ const saveLinks = async () => {
     if (error) throw error;
 
     store.commit('SET_LINKS', cleanLinks);
+    await auditLog(AUDIT_EVENTS.DATA_UPDATED, { section: 'links', count: cleanLinks.length });
     store.dispatch('showStatus', { type: 'success', message: 'Links saved.' });
   } catch (e) {
-    store.dispatch('showStatus', { type: 'error', message: 'Failed: ' + e.message });
+    const { userMessage } = ErrorHandler.handle(e, { section: 'links' });
+    store.dispatch('showStatus', { type: 'error', message: userMessage });
   } finally {
     saving.value = false;
   }

@@ -29,6 +29,7 @@ import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal.vue';
 import { supabase } from '@/lib/supabase';
 import { useSessionManager } from '@/services/sessionService';
 import { recordSessionStart } from '@/services/sessionAnalytics';
+import { auditLog, AUDIT_EVENTS } from '@/services/auditService';
 
 const store = useStore();
 const authState = computed(() => store.state.authState);
@@ -45,7 +46,8 @@ const { extendSession, performLogout, timeRemaining } = useSessionManager({
   onHideWarning: () => {
     showSessionWarning.value = false;
   },
-  onLogout: (reason) => {
+  onLogout: async (reason) => {
+    await auditLog(AUDIT_EVENTS.USER_LOGOUT, { reason });
     showSessionWarning.value = false;
     store.commit('SET_AUTH_STATE', 'login');
     if (reason !== 'manual') {
@@ -85,7 +87,7 @@ onMounted(async () => {
       store.commit('SET_AUTH_STATE', 'login');
     }
   } catch (e) {
-    console.error('[getSession]', e);
+    if (process.env.NODE_ENV !== 'production') console.warn('[getSession]', e);
     store.commit('SET_STATUS', { type: 'error', message: 'Could not connect to authentication. Please refresh and try again.' });
     store.commit('SET_AUTH_STATE', 'login');
   }

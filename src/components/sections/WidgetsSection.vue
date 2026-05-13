@@ -39,6 +39,7 @@ import { useStore } from 'vuex';
 import Card from '@/components/ui/Card.vue';
 import { useSaveOperation } from '@/composables/useSaveOperation';
 import { ALL_WIDGETS } from '@/config/widgets';
+import { auditLog, AUDIT_EVENTS } from '@/services/auditService';
 
 const store = useStore();
 const company = computed(() => store.state.company);
@@ -68,6 +69,7 @@ const saveWidgets = async () => {
       .upsert({ company_id: company.value.id, disabled_widgets: disabledList }, { onConflict: 'company_id' });
     if (error) throw error;
     store.commit('SET_COMPANY', { ...company.value, disabled_widgets: disabledList });
+    await auditLog(AUDIT_EVENTS.SETTINGS_CHANGED, { section: 'widgets', disabled: disabledList });
     store.dispatch('showStatus', { type: 'success', message: 'Widget settings saved.' });
   });
 };

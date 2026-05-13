@@ -61,6 +61,7 @@ import Card from '@/components/ui/Card.vue';
 import UploadArea from '@/components/ui/UploadArea.vue';
 import { useSaveOperation } from '@/composables/useSaveOperation';
 import { uploadFile } from '@/services/uploadService';
+import { auditLog, AUDIT_EVENTS } from '@/services/auditService';
 
 const store = useStore();
 const company = computed(() => store.state.company);
@@ -144,6 +145,10 @@ const saveBranding = async () => {
     if (configRes.error) throw configRes.error;
 
     store.commit('SET_COMPANY', { ...company.value, name: trimmedName, logo_url: logoUrl, bg_image: bgUrl });
+    await auditLog(AUDIT_EVENTS.SETTINGS_CHANGED, { section: 'branding', name: trimmedName, logoChanged: !!logoFile.value, bgChanged: !!bgFile.value });
+    if (logoUrl !== company.value?.logo_url || bgUrl !== company.value?.bg_image) {
+      await auditLog(AUDIT_EVENTS.FILE_UPLOADED, { section: 'branding' });
+    }
     store.dispatch('showStatus', { type: 'success', message: 'Branding saved.' });
   });
   uploadingLogo.value = false;

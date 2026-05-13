@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/lib/supabase';
+import { ErrorHandler } from '@/services/errorHandler';
 
 export function useSaveOperation() {
   const store = useStore();
@@ -19,7 +20,8 @@ export function useSaveOperation() {
     try {
       await operation();
     } catch (e) {
-      store.dispatch('showStatus', { type: 'error', message: 'Failed: ' + e.message });
+      const { userMessage } = ErrorHandler.handle(e, { operation: 'save' });
+      store.dispatch('showStatus', { type: 'error', message: userMessage });
     } finally {
       saving.value = false;
     }
