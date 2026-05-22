@@ -103,7 +103,7 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
     try {
       await supabase.auth.refreshSession();
     } catch (e) {
-      console.warn('[session] refresh failed:', e.message);
+      if (process.env.NODE_ENV !== 'production') console.warn('[session] refresh failed:', e.message);
     }
     sessionStart.value = Date.now();
     store?.commit('SET_SESSION', { startedAt: sessionStart.value });
@@ -120,7 +120,7 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
     try {
       await supabase.auth.signOut();
     } catch (e) {
-      console.warn('[session] signOut error:', e.message);
+      if (process.env.NODE_ENV !== 'production') console.warn('[session] signOut error:', e.message);
     }
     sessionStorage.clear();
     localStorage.removeItem('elliotforwater-admin');
@@ -169,7 +169,7 @@ async function reportEvent(event, fingerprint = null) {
       body: JSON.stringify({ event, fingerprint }),
     });
   } catch (e) {
-    console.warn('[session] reportEvent failed:', e.message);
+    if (process.env.NODE_ENV !== 'production') console.warn('[session] reportEvent failed:', e.message);
   }
 }
 

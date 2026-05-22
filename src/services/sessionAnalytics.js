@@ -20,7 +20,7 @@ export async function recordSessionStart(userId, fingerprint) {
     fingerprint,
     is_active: true,
   });
-  if (error) console.warn('[analytics] recordSessionStart:', error.message);
+  if (error && process.env.NODE_ENV !== 'production') console.warn('[analytics] recordSessionStart:', error.message);
 }
 
 export async function recordSessionEnd(reason = 'manual') {
@@ -38,7 +38,7 @@ export async function recordSessionEnd(reason = 'manual') {
     .update({ ended_at: now, duration_ms, reason, is_active: false })
     .eq('session_id', SESSION_ID);
 
-  if (error) console.warn('[analytics] recordSessionEnd:', error.message);
+  if (error && process.env.NODE_ENV !== 'production') console.warn('[analytics] recordSessionEnd:', error.message);
 }
 
 export async function getActiveSessions(userId) {

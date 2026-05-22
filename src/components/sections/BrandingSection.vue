@@ -120,15 +120,21 @@ const saveBranding = async () => {
 
     if (logoFile.value) {
       uploadingLogo.value = true;
-      logoUrl = await uploadFile(logoFile.value, `${domain}/logo`, 'logo');
-      logoFile.value = null;
-      uploadingLogo.value = false;
+      try {
+        logoUrl = await uploadFile(logoFile.value, `${domain}/logo`, 'logo');
+        logoFile.value = null;
+      } finally {
+        uploadingLogo.value = false;
+      }
     }
     if (bgFile.value) {
       uploadingBg.value = true;
-      bgUrl = await uploadFile(bgFile.value, `${domain}/background`, 'background');
-      bgFile.value = null;
-      uploadingBg.value = false;
+      try {
+        bgUrl = await uploadFile(bgFile.value, `${domain}/background`, 'background');
+        bgFile.value = null;
+      } finally {
+        uploadingBg.value = false;
+      }
     }
 
     const trimmedName = name.value.trim() || company.value.name || domain;
@@ -153,7 +159,5 @@ const saveBranding = async () => {
     }
     store.dispatch('showStatus', { type: 'success', message: 'Branding saved.' });
   });
-  uploadingLogo.value = false;
-  uploadingBg.value = false;
 };
 </script>

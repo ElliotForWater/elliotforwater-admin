@@ -12,7 +12,7 @@
           <div class="text-sm text-on-surface mb-1">{{ activeNotif.message }}</div>
           <div class="text-[11px] text-on-surface-variant">Sent {{ formatDate(activeNotif.created_at) }}</div>
         </div>
-        <button class="border border-outline bg-white rounded-lg px-3 py-1 text-xs cursor-pointer text-on-surface-variant whitespace-nowrap transition-colors hover:border-error hover:text-error" @click="clearNotification">
+        <button class="border border-outline bg-white rounded-lg px-3 py-1 text-xs cursor-pointer text-on-surface-variant whitespace-nowrap transition-colors hover:border-error hover:text-error" @click="confirmClear">
           Clear
         </button>
       </div>
@@ -39,6 +39,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useStore } from 'vuex';
+import DOMPurify from 'dompurify';
 import Card from '@/components/ui/Card.vue';
 import { supabase } from '@/lib/supabase';
 import { formatDate } from '@/helpers';
@@ -58,7 +59,7 @@ const sendNotification = async () => {
   sending.value = true;
   try {
     const notif = {
-      message: message.value.trim(),
+      message: DOMPurify.sanitize(message.value.trim(), { ALLOWED_TAGS: [] }),
       active: true,
       created_at: new Date().toISOString(),
       created_by: user.value.email,
@@ -78,6 +79,11 @@ const sendNotification = async () => {
   } finally {
     sending.value = false;
   }
+};
+
+const confirmClear = () => {
+  if (!confirm('Clear this notification? It will be removed for all team members immediately.')) return;
+  clearNotification();
 };
 
 const clearNotification = async () => {

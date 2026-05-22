@@ -36,9 +36,9 @@ export async function auditLog(eventType, actionData = {}) {
     };
 
     const { error } = await supabase.from('audit_logs').insert(entry);
-    if (error) console.warn('[audit] insert failed:', error.code);
-  } catch (e) {
-    console.warn('[audit] logging failed silently');
+    if (error && process.env.NODE_ENV !== 'production') console.warn('[audit] insert failed:', error.code);
+  } catch {
+    // silent in production
   }
 }
 

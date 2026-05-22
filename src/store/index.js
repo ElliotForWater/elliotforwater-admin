@@ -85,8 +85,9 @@ export default createStore({
         }
 
         if (profile.admin_email && profile.admin_email !== user.email) {
-          commit('SET_AUTH_STATE', 'not-authorized');
           await auditLog(AUDIT_EVENTS.PERMISSION_DENIED, { email: user.email, domain });
+          await supabase.auth.signOut();
+          commit('SET_AUTH_STATE', 'not-authorized');
           return;
         }
 
