@@ -44,19 +44,14 @@ The project needs some helper programs to work.
 ### **Step 4: Set Up Environment Variables**
 The project needs secret information to connect to the database.
 
-**What are environment variables?**
-- Secret settings like passwords and API keys
-- They should never be shared or committed to GitHub
-
 **How to Set Up:**
-1. In the project folder, create a new file called `.env`
-2. Copy the content from `.env.example`into the `.env` file.
-3. Replace the placeholder values with your actual Supabase details
-4. Save the file
+1. Copy `.env.example` to a new file called `.env`
+2. Replace the placeholder values with your actual Supabase credentials
+3. Save the file — you're done for local development
 
-**Important:** The `.env` file should never be uploaded to GitHub! It contains sensitive information.
-If it gets committed by accident, revoke the keys in your Supabase dashboard and generate new ones.
-This should not happen as we have a `.gitignore` file, which is a file where we specify files and folders that should be excluded from version control. The `.env` file is listed there.
+The `.env.production` file contains the production-specific overrides (OAuth redirect URL). It's already set up and gitignored — Netlify reads it automatically at build time.
+
+**Important:** Never commit `.env` or `.env.production` to GitHub. They are listed in `.gitignore` so this shouldn't happen, but if it does, revoke the Supabase keys immediately and generate new ones.
 
 ### **Step 5: Run the Project**
 Now you can start the development server.

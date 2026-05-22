@@ -31,33 +31,29 @@ This project includes comprehensive documentation:
 
 ## Environment variables
 
-Create a `.env` file in the project root and copy the content of `.env.example`:
+Copy `.env.example` to `.env` and fill in the values:
 
 | Variable | Description |
 |---|---|
 | `VUE_APP_SUPABASE_URL` | Your Supabase project URL |
 | `VUE_APP_SUPABASE_ANON_KEY` | Supabase anon/public key (safe to expose) |
-| `VUE_APP_OAUTH_REDIRECT_URL` | Where Google OAuth redirects after login. Use `http://localhost:8080` locally, and your GitHub Pages URL in production |
+| `VUE_APP_OAUTH_REDIRECT_URL` | Where Google OAuth redirects after login — `http://localhost:8080` locally |
+| `VUE_APP_ENV` | `development` locally, `production` in Netlify |
 
-The storage bucket name is hardcoded as `company-assets` in `src/lib/supabase.js`. All uploaded files (logos, backgrounds) go into this bucket.
+Production overrides live in `.env.production` — only the two values that differ from local. Netlify reads those automatically at build time. You do not need to set them in the Netlify dashboard.
+
+In Supabase → Authentication → URL Configuration, add both URLs to **Redirect URLs**:
+- `http://localhost:8080`
+- `https://admin.elliotforwater.com`
 
 ---
 
 ## Quick Installation
 
 ```bash
-# Install dependencies
-npm install
-
-# Start dev server
-npm run serve
-
-# Build for production
-npm run build
+npm install       # install dependencies
+npm run serve     # start dev server → http://localhost:8080
+npm run build     # build for production
 ```
-
-In Supabase → Authentication → URL Configuration, add these to **Redirect URLs**:
-- `http://localhost:8080`
-- `https://your-org.github.io/elliot-admin/`
 
 ---

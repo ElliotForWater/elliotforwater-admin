@@ -25,21 +25,14 @@ You push to GitHub on the `main` branch → Netlify detects changes → Builds a
 
 ## ⚙️ Environment Variables
 
-### **Important: Netlify Environment Variables**
-Environment variables are configured in Netlify dashboard, not in your local `.env` file.
+The project uses two env files, both gitignored:
 
-### **When to Update Netlify Variables**
-You need to update Netlify environment variables when any of the value you have in `.env` change.
+- **`.env`** — base config used in all environments (Supabase credentials, localhost redirect URL)
+- **`.env.production`** — production overrides applied automatically when Netlify builds (`VUE_APP_OAUTH_REDIRECT_URL` and `VUE_APP_ENV`)
 
-**How to Update:**
-1. Go to Netlify dashboard → Site settings → Environment variables
-2. Update the changed variables
-3. Trigger a new deploy (or push to main)
+Netlify reads `.env.production` at build time automatically — you do **not** need to configure variables in the Netlify dashboard.
 
-### **Local vs. Production Variables**
-- **Local `.env`**: For development on `http://localhost:8080`
-- **Netlify variables**: For production on your live site
-- **Keep them in sync** when values change
+If you ever need to rotate the Supabase credentials, update `.env` locally and set the new values in Netlify → Site settings → Environment variables.
 
 ## Common Deployment Issues
 
