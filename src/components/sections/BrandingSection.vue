@@ -62,6 +62,7 @@ import UploadArea from '@/components/ui/UploadArea.vue';
 import { useSaveOperation } from '@/composables/useSaveOperation';
 import { uploadFile } from '@/services/uploadService';
 import { auditLog, AUDIT_EVENTS } from '@/services/auditService';
+import { supabase } from '@/lib/supabase';
 
 const store = useStore();
 const company = computed(() => store.state.company);
@@ -132,7 +133,6 @@ const saveBranding = async () => {
 
     const trimmedName = name.value.trim() || company.value.name || domain;
 
-    const { supabase } = await import('@/lib/supabase');
     const [profileRes, configRes] = await Promise.all([
       supabase.from('company_profiles').update({ name: trimmedName }).eq('id', companyId),
       supabase.from('company_configs').upsert(
@@ -144,9 +144,11 @@ const saveBranding = async () => {
     if (profileRes.error) throw profileRes.error;
     if (configRes.error) throw configRes.error;
 
+    const logoChanged = logoUrl !== company.value?.logo_url;
+    const bgChanged = bgUrl !== company.value?.bg_image;
     store.commit('SET_COMPANY', { ...company.value, name: trimmedName, logo_url: logoUrl, bg_image: bgUrl });
-    await auditLog(AUDIT_EVENTS.SETTINGS_CHANGED, { section: 'branding', name: trimmedName, logoChanged: !!logoFile.value, bgChanged: !!bgFile.value });
-    if (logoUrl !== company.value?.logo_url || bgUrl !== company.value?.bg_image) {
+    await auditLog(AUDIT_EVENTS.SETTINGS_CHANGED, { section: 'branding', name: trimmedName, logoChanged, bgChanged });
+    if (logoChanged || bgChanged) {
       await auditLog(AUDIT_EVENTS.FILE_UPLOADED, { section: 'branding' });
     }
     store.dispatch('showStatus', { type: 'success', message: 'Branding saved.' });

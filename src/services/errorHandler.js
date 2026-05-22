@@ -4,7 +4,7 @@ const ERROR_MAP = {
   'JWT': 'Authentication failed. Please sign in again.',
   'auth': 'Authentication failed. Please sign in again.',
   'NetworkError': 'Connection error. Please check your internet connection.',
-  'fetch': 'Connection error. Please check your internet connection.',
+  'Failed to fetch': 'Connection error. Please check your internet connection.',
   '401': 'You are not authorised to perform this action.',
   '403': 'You do not have permission to perform this action.',
   '404': 'The requested resource was not found.',
