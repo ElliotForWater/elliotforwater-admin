@@ -1,5 +1,6 @@
 import { createStore } from 'vuex';
 import VuexPersistence from 'vuex-persist';
+import { generateFingerprint } from '@/utils/fingerprint';
 
 const vuexLocal = new VuexPersistence({
   storage: window.localStorage,
@@ -140,19 +141,6 @@ export default createStore({
   },
   plugins: [vuexLocal.plugin],
 });
-
-function generateFingerprint() {
-  try {
-    return btoa([
-      navigator.userAgent,
-      `${screen.width}x${screen.height}`,
-      Intl.DateTimeFormat().resolvedOptions().timeZone,
-      navigator.language,
-    ].join('|'));
-  } catch {
-    return 'unknown';
-  }
-}
 
 function sessionEvent(type, meta = {}) {
   return { type, ts: new Date().toISOString(), ...meta };

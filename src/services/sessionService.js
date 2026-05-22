@@ -2,6 +2,7 @@ import { ref, watch, onUnmounted } from 'vue';
 import { useIdle } from '@vueuse/core';
 import { supabase } from '@/lib/supabase';
 import { recordSessionEnd, getActiveSessions, SESSION_ID } from '@/services/sessionAnalytics';
+import { generateFingerprint } from '@/utils/fingerprint';
 
 const ABSOLUTE_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours
 const IDLE_TIMEOUT = 30 * 60 * 1000;          // 30 minutes
@@ -172,15 +173,3 @@ async function reportEvent(event, fingerprint = null) {
   }
 }
 
-function generateFingerprint() {
-  try {
-    return btoa([
-      navigator.userAgent,
-      `${screen.width}x${screen.height}`,
-      Intl.DateTimeFormat().resolvedOptions().timeZone,
-      navigator.language,
-    ].join('|'));
-  } catch {
-    return 'unknown';
-  }
-}

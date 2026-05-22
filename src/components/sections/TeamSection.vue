@@ -47,17 +47,18 @@ import { formatDate, getInitials, getDomain } from '@/helpers';
 
 const store = useStore();
 const user = computed(() => store.state.user);
+const company = computed(() => store.state.company);
 
 const members = ref([]);
 const loading = ref(true);
 const error = ref(false);
 
 onMounted(async () => {
-  const domain = getDomain(user.value?.email);
+  const domain = company.value?.email_domain || getDomain(user.value?.email);
   const { data, error: err } = await supabase
     .from('profiles')
     .select('*')
-    .ilike('email', `%@${domain}`)
+    .eq('email_domain', domain)
     .order('created_at', { ascending: false });
 
   if (err) {
