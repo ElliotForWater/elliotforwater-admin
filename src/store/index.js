@@ -7,7 +7,7 @@ const vuexLocal = new VuexPersistence({
   key: 'elliotforwater-admin',
   reducer: (state) => ({
     currentSection: state.currentSection,
-    session: state.session,
+    session: { startedAt: state.session?.startedAt, fingerprint: state.session?.fingerprint },
   }),
 });
 

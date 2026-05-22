@@ -92,10 +92,7 @@ const sessionAge = ref('');
 const updateSessionAge = () => {
   const startedAt = store.state.session?.startedAt;
   if (!startedAt) { sessionAge.value = ''; return; }
-  const ms = Date.now() - startedAt;
-  const h = Math.floor(ms / 3_600_000);
-  const m = Math.floor((ms % 3_600_000) / 60_000);
-  sessionAge.value = h > 0 ? `${h}h ${m}m` : `${m}m`;
+  sessionAge.value = formatDuration(Date.now() - startedAt);
 };
 
 const analytics = ref(null);

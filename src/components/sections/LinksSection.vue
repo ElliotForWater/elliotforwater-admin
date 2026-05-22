@@ -160,16 +160,6 @@ function categorizeLink(url) {
   }
 }
 
-// ─── Domain reputation (stub — wire up to external API if needed) ─────────────
-
-// eslint-disable-next-line no-unused-vars
-async function checkDomainReputation(_url) {
-  // Placeholder: integrate with Google Safe Browsing API or similar.
-  // For now returns null (unknown). A real implementation would call:
-  // https://safebrowsing.googleapis.com/v4/threatMatches:find
-  return null;
-}
-
 // ─── Store & state ────────────────────────────────────────────────────────────
 
 const store = useStore();
@@ -255,13 +245,6 @@ function onUrlInput(index) {
 
     fieldErrors[index].link = '';
     links.value[index].category = categorizeLink(result.url);
-
-    // Domain reputation check (async, non-blocking)
-    const reputation = await checkDomainReputation(result.url);
-    if (reputation === 'unsafe') {
-      fieldErrors[index].link = 'This domain may be unsafe. Proceed with caution.';
-      fieldErrors[index].linkWarning = true;
-    }
   });
 }
 
