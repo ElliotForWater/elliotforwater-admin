@@ -83,7 +83,7 @@ import { useStore } from 'vuex';
 import { supabase } from '@/lib/supabase';
 import { auditLog, AUDIT_EVENTS } from '@/services/auditService';
 import { ErrorHandler } from '@/services/errorHandler';
-import { sanitizeLabel, validateURL, categorizeLink, LABEL_MAX_LENGTH } from '@/utils/linkValidation';
+import { sanitizeLabel, validateURL, categorizeLink, LABEL_MAX_LENGTH } from '@/utils/shared';
 
 
 // ─── Store & state ────────────────────────────────────────────────────────────

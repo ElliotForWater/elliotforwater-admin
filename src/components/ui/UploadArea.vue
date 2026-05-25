@@ -28,6 +28,7 @@
 
 <script setup>
 import { ref } from 'vue';
+import { ALLOWED_MIME } from '@/utils/shared';
 
 const props = defineProps({
   previewUrl: String,
@@ -40,8 +41,6 @@ const props = defineProps({
 });
 
 const acceptAttr = 'image/png,image/jpeg,image/webp,image/svg+xml,image/gif';
-
-const ALLOWED_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'image/gif']);
 
 const emit = defineEmits(['file-selected', 'clear']);
 const validationError = ref('');

@@ -1,23 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
+import { ALLOWED_MIME, FILE_LIMITS } from '@/utils/shared';
+import { createRateLimiter, json, authenticateRequest, createAdminClient, CORS_HEADERS } from './shared';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const BUCKET = 'company-assets';
-
-const LIMITS: Record<string, number> = {
-  logo: 1 * 1024 * 1024,       // 1 MB
-  background: 2 * 1024 * 1024, // 2 MB
-};
-
-const ALLOWED_MIME = new Set([
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-  'image/svg+xml',
-  'image/gif',
-]);
+const isRateLimited = createRateLimiter(5, 60_000); // 5 uploads per minute
 
 // Magic bytes per MIME type
 const MAGIC: Record<string, { offset: number; bytes: number[] }> = {
@@ -27,22 +16,6 @@ const MAGIC: Record<string, { offset: number; bytes: number[] }> = {
   'image/webp': { offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] }, // 'WEBP' at byte 8
 };
 
-// ─── Rate limiting (in-memory, per-function instance) ─────────────────────────
-
-const uploadAttempts = new Map<string, number[]>();
-const RATE_LIMIT = 5;          // max uploads
-const RATE_WINDOW_MS = 60_000; // per minute
-
-function isRateLimited(userId: string): boolean {
-  const now = Date.now();
-  const attempts = (uploadAttempts.get(userId) ?? []).filter(
-    (t) => now - t < RATE_WINDOW_MS,
-  );
-  if (attempts.length >= RATE_LIMIT) return true;
-  attempts.push(now);
-  uploadAttempts.set(userId, attempts);
-  return false;
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -78,28 +51,12 @@ function safeExtension(mimeType: string): string {
   return map[mimeType] ?? 'bin';
 }
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
-};
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
-  });
-}
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, content-type',
-      },
-    });
+    return new Response(null, { headers: CORS_HEADERS });
   }
 
   if (req.method !== 'POST') {
@@ -107,17 +64,8 @@ serve(async (req: Request) => {
   }
 
   // ── 1. Authentication ──────────────────────────────────────────────────────
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader) return json({ error: 'Missing authorization header' }, 401);
-
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_ANON_KEY')!,
-    { global: { headers: { Authorization: authHeader } } },
-  );
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return json({ error: 'Unauthorized' }, 401);
+  const { error: authError, user } = await authenticateRequest(req);
+  if (authError || !user) return json({ error: authError || 'Unauthorized' }, 401);
 
   // ── 2. Rate limiting ───────────────────────────────────────────────────────
   if (isRateLimited(user.id)) {
@@ -148,7 +96,7 @@ serve(async (req: Request) => {
   }
 
   // ── 5. Size limit ──────────────────────────────────────────────────────────
-  const limit = LIMITS[kind] ?? LIMITS.logo;
+  const limit = FILE_LIMITS[kind] ?? FILE_LIMITS.logo;
   if (file.size > limit) {
     const mb = (limit / 1024 / 1024).toFixed(0);
     return json({ error: `File too large. Maximum size for ${kind} is ${mb}MB.` }, 400);
@@ -198,10 +146,7 @@ serve(async (req: Request) => {
   }
 
   // ── 9. Upload to Supabase Storage ─────────────────────────────────────────
-  const adminClient = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  );
+  const adminClient = createAdminClient();
 
   const { error: uploadError } = await adminClient.storage
     .from(BUCKET)

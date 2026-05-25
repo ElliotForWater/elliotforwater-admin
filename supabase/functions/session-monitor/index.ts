@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createRateLimiter, json, authenticateRequest, CORS_HEADERS } from './shared';
 
 // ─── Anomaly thresholds ───────────────────────────────────────────────────────
 
@@ -8,21 +8,12 @@ const MAX_CONCURRENT_SESSIONS = 3;
 
 // ─── Rate limiting ────────────────────────────────────────────────────────────
 
-const eventAttempts = new Map<string, number[]>();
-
-function isRateLimited(userId: string): boolean {
-  const now = Date.now();
-  const attempts = (eventAttempts.get(userId) ?? []).filter((t) => now - t < 60_000);
-  if (attempts.length >= 30) return true;
-  attempts.push(now);
-  eventAttempts.set(userId, attempts);
-  return false;
-}
+const isRateLimited = createRateLimiter(30, 60_000); // 30 events per minute
 
 // ─── Anomaly detection ────────────────────────────────────────────────────────
 
 async function detectAnomalies(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   userId: string,
   event: string,
   fingerprint: string | null,
@@ -64,26 +55,14 @@ async function detectAnomalies(
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return json(null, 204, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'authorization, content-type',
-    });
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
 
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
   // Auth
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader) return json({ error: 'Missing authorization header' }, 401);
-
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_ANON_KEY')!,
-    { global: { headers: { Authorization: authHeader } } },
-  );
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) return json({ error: 'Unauthorized' }, 401);
+  const { error: authError, user, client: supabase } = await authenticateRequest(req);
+  if (authError || !user) return json({ error: authError || 'Unauthorized' }, 401);
 
   if (isRateLimited(user.id)) return json({ error: 'Too many requests' }, 429);
 
@@ -112,13 +91,3 @@ serve(async (req: Request) => {
   return json({ ok: true, alerts });
 });
 
-function json(body: unknown, status = 200, extraHeaders: Record<string, string> = {}) {
-  return new Response(body === null ? null : JSON.stringify(body), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      ...extraHeaders,
-    },
-  });
-}

@@ -22,6 +22,21 @@ export const VALIDATOR_OPTIONS = {
   allow_protocol_relative_urls: false,
 };
 
+// ─── File validation ───────────────────────────────────────────────────────────
+
+export const ALLOWED_MIME = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/svg+xml',
+  'image/gif',
+]);
+
+export const FILE_LIMITS = {
+  logo: 1 * 1024 * 1024,       // 1 MB
+  background: 2 * 1024 * 1024, // 2 MB
+};
+
 // ─── Sanitization ─────────────────────────────────────────────────────────────
 
 /**
