@@ -9,7 +9,7 @@ import { generateFingerprint } from "@/utils/fingerprint";
 
 const ABSOLUTE_TIMEOUT = 7 * 24 * 60 * 60 * 1000; // 7 days
 const WARNING_BEFORE = 5 * 60 * 1000; // warn 5 min before expiry
-const CHECK_INTERVAL = 30_000; // check every 30 seconds
+const CHECK_INTERVAL = 5 * 60 * 1000; // check every 5 minutes
 const MAX_FINGERPRINT_MISMATCHES = 3; // alert after this many mismatches
 
 export function useSessionManager({

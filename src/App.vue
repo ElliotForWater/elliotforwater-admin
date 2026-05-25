@@ -83,6 +83,12 @@ onMounted(async () => {
     if (error) throw error;
     if (session?.user) {
       await store.dispatch('loadAdmin', session.user);
+      // Start session tracking on page reload if already authenticated
+      if (store.state.authState === 'admin') {
+        store.dispatch('startSession');
+        const fingerprint = store.state.session?.fingerprint;
+        recordSessionStart(store.state.user?.id, fingerprint);
+      }
     } else {
       store.commit('SET_AUTH_STATE', 'login');
     }
@@ -100,6 +106,7 @@ onMounted(async () => {
         window.addEventListener('beforeunload', () => supabase.auth.signOut(), { once: true });
       }
     } else if (event === 'SIGNED_OUT') {
+      await recordSessionEnd('server-signout');
       store.commit('SET_AUTH_STATE', 'login');
     }
   });

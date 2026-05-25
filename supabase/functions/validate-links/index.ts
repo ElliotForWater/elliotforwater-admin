@@ -1,4 +1,4 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { sanitizeLabel, validateURL, categorizeLink, LABEL_MAX_LENGTH } from '@/utils/shared';
 import { createRateLimiter, json, authenticateRequest, CORS_HEADERS } from './shared';
 

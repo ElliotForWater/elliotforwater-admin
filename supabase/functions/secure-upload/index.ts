@@ -1,4 +1,4 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
 import { ALLOWED_MIME, FILE_LIMITS } from '@/utils/shared';
 import { createRateLimiter, json, authenticateRequest, createAdminClient, CORS_HEADERS } from './shared';

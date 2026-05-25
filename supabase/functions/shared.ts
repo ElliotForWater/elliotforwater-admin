@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // ─── CORS headers ─────────────────────────────────────────────────────────────
-
+// CRITICAL: To be changed with https://admin.elliotforwater.com
 export const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, content-type',
