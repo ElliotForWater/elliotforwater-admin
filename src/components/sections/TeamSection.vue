@@ -43,7 +43,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import Card from '@/components/ui/Card.vue';
 import { supabase } from '@/lib/supabase';
-import { formatDate, getInitials, getDomain } from '@/helpers';
+import { formatDate, getInitials, getDomain } from '@/utils/helpers';
 
 const store = useStore();
 const user = computed(() => store.state.user);

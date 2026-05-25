@@ -67,7 +67,7 @@
 <script setup>
 import { ref, computed, inject, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
-import { getInitials, getDomain } from '@/helpers';
+import { getInitials, getDomain } from '@/utils/helpers';
 import LogoutConfirmModal from '@/components/ui/LogoutConfirmModal.vue';
 import { getAnalytics, formatDuration } from '@/services/sessionAnalytics';
 

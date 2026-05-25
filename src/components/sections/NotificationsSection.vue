@@ -42,7 +42,7 @@ import { useStore } from 'vuex';
 import DOMPurify from 'dompurify';
 import Card from '@/components/ui/Card.vue';
 import { supabase } from '@/lib/supabase';
-import { formatDate } from '@/helpers';
+import { formatDate } from '@/utils/helpers';
 import { auditLog, AUDIT_EVENTS } from '@/services/auditService';
 import { ErrorHandler } from '@/services/errorHandler';
 

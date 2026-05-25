@@ -1,16 +1,25 @@
-import { ref, watch, onUnmounted } from 'vue';
-import { useIdle } from '@vueuse/core';
-import { supabase } from '@/lib/supabase';
-import { recordSessionEnd, getActiveSessions, SESSION_ID } from '@/services/sessionAnalytics';
-import { generateFingerprint } from '@/utils/fingerprint';
+import { ref, watch, onUnmounted } from "vue";
+import { useIdle } from "@vueuse/core";
+import { supabase } from "@/lib/supabase";
+import {
+  recordSessionEnd,
+  getActiveSessions,
+  SESSION_ID,
+} from "@/services/sessionAnalytics";
+import { generateFingerprint } from "@/utils/fingerprint";
 
-const ABSOLUTE_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours
-const IDLE_TIMEOUT = 30 * 60 * 1000;          // 30 minutes
-const WARNING_BEFORE = 5 * 60 * 1000;         // warn 5 min before expiry
-const CHECK_INTERVAL = 30_000;                 // check every 30 seconds
-const MAX_FINGERPRINT_MISMATCHES = 3;          // alert after this many mismatches
+const ABSOLUTE_TIMEOUT = 7 * 24 * 60 * 60 * 1000; // 7 days
+const IDLE_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours
+const WARNING_BEFORE = 5 * 60 * 1000; // warn 5 min before expiry
+const CHECK_INTERVAL = 30_000; // check every 30 seconds
+const MAX_FINGERPRINT_MISMATCHES = 3; // alert after this many mismatches
 
-export function useSessionManager({ store, onLogout, onShowWarning, onHideWarning } = {}) {
+export function useSessionManager({
+  store,
+  onLogout,
+  onShowWarning,
+  onHideWarning,
+} = {}) {
   const sessionStart = ref(store?.state.session?.startedAt || Date.now());
   const warningShown = ref(false);
   const timeRemaining = ref(0);
@@ -20,28 +29,31 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
 
   // Force logout when VueUse confirms idle timeout elapsed
   watch(idle, (isIdle) => {
-    if (isIdle) performLogout('idle');
+    if (isIdle) performLogout("idle");
   });
 
   // Multi-tab sync: if another tab signs out (removes localStorage), log out here too
   const onStorageChange = (e) => {
-    if (e.key === 'elliotforwater-admin' && !e.newValue) {
-      performLogout('other-tab');
+    if (e.key === "elliotforwater-admin" && !e.newValue) {
+      performLogout("other-tab");
     }
   };
-  window.addEventListener('storage', onStorageChange);
+  window.addEventListener("storage", onStorageChange);
 
   // Network recovery: revalidate session when coming back online
   const onOnline = async () => {
-    store?.dispatch('logSessionEvent', { type: 'NETWORK_RESTORED' });
-    const { data: { session }, error } = await supabase.auth.getSession();
+    store?.dispatch("logSessionEvent", { type: "NETWORK_RESTORED" });
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
     if (error || !session) {
-      performLogout('network-invalid');
+      performLogout("network-invalid");
     } else {
-      store?.dispatch('logSessionEvent', { type: 'SESSION_REVALIDATED' });
+      store?.dispatch("logSessionEvent", { type: "SESSION_REVALIDATED" });
     }
   };
-  window.addEventListener('online', onOnline);
+  window.addEventListener("online", onOnline);
 
   const checkTimeout = async () => {
     const now = Date.now();
@@ -52,18 +64,21 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
     timeRemaining.value = Math.max(0, remaining);
 
     if (remaining <= 0) {
-      performLogout('timeout');
+      performLogout("timeout");
       return;
     }
 
     if (remaining <= WARNING_BEFORE && !warningShown.value) {
       warningShown.value = true;
-      store?.dispatch('logSessionEvent', { type: 'SESSION_WARNING', meta: { remaining } });
+      store?.dispatch("logSessionEvent", {
+        type: "SESSION_WARNING",
+        meta: { remaining },
+      });
       onShowWarning?.();
     }
 
     // Report significant events to anomaly detection Edge Function
-    await reportEvent('SESSION_CHECK', store?.state.session?.fingerprint);
+    await reportEvent("SESSION_CHECK", store?.state.session?.fingerprint);
 
     // Concurrent session detection
     const userId = store?.state.user?.id;
@@ -71,9 +86,12 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
       const active = await getActiveSessions(userId);
       const others = active.filter((s) => s.session_id !== SESSION_ID);
       if (others.length > 0) {
-        store?.dispatch('logSessionEvent', { type: 'CONCURRENT_SESSION', meta: { count: others.length } });
-        store?.commit('SET_STATUS', {
-          type: 'error',
+        store?.dispatch("logSessionEvent", {
+          type: "CONCURRENT_SESSION",
+          meta: { count: others.length },
+        });
+        store?.commit("SET_STATUS", {
+          type: "error",
           message: `Your account is active in ${others.length} other session(s). Sign out of other devices if this wasn't you.`,
         });
       }
@@ -84,14 +102,25 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
       const current = generateFingerprint();
       if (current !== store.state.session.fingerprint) {
         fingerprintMismatches.value += 1;
-        store?.dispatch('logSessionEvent', { type: 'FINGERPRINT_MISMATCH', meta: { count: fingerprintMismatches.value } });
+        store?.dispatch("logSessionEvent", {
+          type: "FINGERPRINT_MISMATCH",
+          meta: { count: fingerprintMismatches.value },
+        });
 
-        await reportEvent('FINGERPRINT_MISMATCH', current);
+        await reportEvent("FINGERPRINT_MISMATCH", current);
         if (fingerprintMismatches.value >= MAX_FINGERPRINT_MISMATCHES) {
-          store?.commit('SET_STATUS', { type: 'error', message: 'Unusual session activity detected. You have been signed out for your security.' });
-          performLogout('fingerprint-mismatch');
+          store?.commit("SET_STATUS", {
+            type: "error",
+            message:
+              "Unusual session activity detected. You have been signed out for your security.",
+          });
+          performLogout("fingerprint-mismatch");
         } else {
-          store?.commit('SET_STATUS', { type: 'error', message: 'Unusual session activity detected. Please verify your identity.' });
+          store?.commit("SET_STATUS", {
+            type: "error",
+            message:
+              "Unusual session activity detected. Please verify your identity.",
+          });
         }
       }
     }
@@ -103,36 +132,41 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
     try {
       await supabase.auth.refreshSession();
     } catch (e) {
-      if (process.env.NODE_ENV !== 'production') console.warn('[session] refresh failed:', e.message);
+      if (process.env.NODE_ENV !== "production")
+        console.warn("[session] refresh failed:", e.message);
     }
     sessionStart.value = Date.now();
-    store?.commit('SET_SESSION', { startedAt: sessionStart.value });
-    store?.dispatch('logSessionEvent', { type: 'SESSION_EXTENDED' });
+    store?.commit("SET_SESSION", { startedAt: sessionStart.value });
+    store?.dispatch("logSessionEvent", { type: "SESSION_EXTENDED" });
     warningShown.value = false;
     onHideWarning?.();
   };
 
-  const performLogout = async (reason = 'manual') => {
+  const performLogout = async (reason = "manual") => {
     clearInterval(intervalId);
-    window.removeEventListener('storage', onStorageChange);
-    window.removeEventListener('online', onOnline);
+    window.removeEventListener("storage", onStorageChange);
+    window.removeEventListener("online", onOnline);
     recordSessionEnd(reason);
     try {
       await supabase.auth.signOut();
     } catch (e) {
-      if (process.env.NODE_ENV !== 'production') console.warn('[session] signOut error:', e.message);
+      if (process.env.NODE_ENV !== "production")
+        console.warn("[session] signOut error:", e.message);
     }
     sessionStorage.clear();
-    localStorage.removeItem('elliotforwater-admin');
-    store?.dispatch('endSession', reason);
+    localStorage.removeItem("elliotforwater-admin");
+    store?.dispatch("endSession", reason);
     onLogout?.(reason);
   };
 
   const validateSession = async () => {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
     if (error || !session) {
-      store?.dispatch('logSessionEvent', { type: 'SESSION_INVALID' });
-      await performLogout('invalid');
+      store?.dispatch("logSessionEvent", { type: "SESSION_INVALID" });
+      await performLogout("invalid");
       return false;
     }
     return true;
@@ -140,8 +174,8 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
 
   onUnmounted(() => {
     clearInterval(intervalId);
-    window.removeEventListener('storage', onStorageChange);
-    window.removeEventListener('online', onOnline);
+    window.removeEventListener("storage", onStorageChange);
+    window.removeEventListener("online", onOnline);
   });
 
   return {
@@ -157,19 +191,21 @@ export function useSessionManager({ store, onLogout, onShowWarning, onHideWarnin
 
 async function reportEvent(event, fingerprint = null) {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) return;
     const url = `${process.env.VUE_APP_SUPABASE_URL}/functions/v1/session-monitor`;
     await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
         Authorization: `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ event, fingerprint }),
     });
   } catch (e) {
-    if (process.env.NODE_ENV !== 'production') console.warn('[session] reportEvent failed:', e.message);
+    if (process.env.NODE_ENV !== "production")
+      console.warn("[session] reportEvent failed:", e.message);
   }
 }
-
