@@ -54,18 +54,24 @@ const loading = ref(true);
 const error = ref(false);
 
 onMounted(async () => {
-  const domain = company.value?.email_domain || getDomain(user.value?.email);
-  const { data, error: err } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('email_domain', domain)
-    .order('created_at', { ascending: false });
+  try {
+    const domain = company.value?.email_domain || getDomain(user.value?.email);
+    const { data, error: err } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email_domain', domain)
+      .order('created_at', { ascending: false });
 
-  if (err) {
+    if (err) {
+      error.value = true;
+    } else {
+      members.value = data || [];
+    }
+  } catch (e) {
     error.value = true;
-  } else {
-    members.value = data || [];
+    console.error('[TeamSection] Failed to load team:', e);
+  } finally {
+    loading.value = false;
   }
-  loading.value = false;
 });
 </script>

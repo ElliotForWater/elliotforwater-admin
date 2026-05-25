@@ -12,15 +12,20 @@ export async function recordSessionStart(userId, fingerprint) {
   if (!userId) return;
 
   // Close any stale active sessions before starting a new one
-  await supabase
-    .from("session_history")
-    .update({
-      is_active: false,
-      ended_at: new Date().toISOString(),
-      reason: "stale",
-    })
-    .eq("user_id", userId)
-    .eq("is_active", true);
+  try {
+    await supabase
+      .from("session_history")
+      .update({
+        is_active: false,
+        ended_at: new Date().toISOString(),
+        reason: "stale",
+      })
+      .eq("user_id", userId)
+      .eq("is_active", true);
+  } catch (e) {
+    if (process.env.NODE_ENV !== "production")
+      console.warn("[analytics] failed to close stale sessions:", e.message);
+  }
 
   const { error } = await supabase.from("session_history").insert({
     user_id: userId,

@@ -67,10 +67,15 @@ const rememberMe = ref(localStorage.getItem('efw-remember-me') !== 'false');
 const signIn = async () => {
   localStorage.setItem('efw-remember-me', rememberMe.value ? 'true' : 'false');
   signingIn.value = true;
-  await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: process.env.VUE_APP_OAUTH_REDIRECT_URL },
-  });
+  try {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: process.env.VUE_APP_OAUTH_REDIRECT_URL },
+    });
+  } catch (e) {
+    signingIn.value = false;
+    console.error('[LoginView] OAuth error:', e);
+  }
 };
 
 const signOut = async () => {

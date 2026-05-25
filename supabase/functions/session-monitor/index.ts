@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
+import { subHours } from 'https://esm.sh/date-fns@2';
 import { createRateLimiter, json, authenticateRequest, CORS_HEADERS } from './shared';
 
 // ─── Anomaly thresholds ───────────────────────────────────────────────────────
@@ -19,7 +20,7 @@ async function detectAnomalies(
   fingerprint: string | null,
 ): Promise<string[]> {
   const alerts: string[] = [];
-  const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const hourAgo = subHours(new Date(), 1).toISOString();
 
   // 1. Too many sessions in one hour
   const { count: recentCount } = await supabase

@@ -123,6 +123,9 @@ const saveBranding = async () => {
       try {
         logoUrl = await uploadFile(logoFile.value, `${domain}/logo`, 'logo');
         logoFile.value = null;
+      } catch (e) {
+        console.error('[BrandingSection] Logo upload failed:', e);
+        throw e;
       } finally {
         uploadingLogo.value = false;
       }
@@ -132,6 +135,9 @@ const saveBranding = async () => {
       try {
         bgUrl = await uploadFile(bgFile.value, `${domain}/background`, 'background');
         bgFile.value = null;
+      } catch (e) {
+        console.error('[BrandingSection] Background upload failed:', e);
+        throw e;
       } finally {
         uploadingBg.value = false;
       }
