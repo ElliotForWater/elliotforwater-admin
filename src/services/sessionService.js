@@ -1,5 +1,4 @@
-import { ref, watch, onUnmounted } from "vue";
-import { useIdle } from "@vueuse/core";
+import { ref, onUnmounted } from "vue";
 import { supabase } from "@/lib/supabase";
 import {
   recordSessionEnd,
@@ -9,7 +8,6 @@ import {
 import { generateFingerprint } from "@/utils/fingerprint";
 
 const ABSOLUTE_TIMEOUT = 7 * 24 * 60 * 60 * 1000; // 7 days
-const IDLE_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours
 const WARNING_BEFORE = 5 * 60 * 1000; // warn 5 min before expiry
 const CHECK_INTERVAL = 30_000; // check every 30 seconds
 const MAX_FINGERPRINT_MISMATCHES = 3; // alert after this many mismatches
@@ -24,13 +22,6 @@ export function useSessionManager({
   const warningShown = ref(false);
   const timeRemaining = ref(0);
   const fingerprintMismatches = ref(0);
-
-  const { idle, lastActive } = useIdle(IDLE_TIMEOUT);
-
-  // Force logout when VueUse confirms idle timeout elapsed
-  watch(idle, (isIdle) => {
-    if (isIdle) performLogout("idle");
-  });
 
   // Multi-tab sync: if another tab signs out (removes localStorage), log out here too
   const onStorageChange = (e) => {
@@ -57,9 +48,7 @@ export function useSessionManager({
 
   const checkTimeout = async () => {
     const now = Date.now();
-    const absoluteRemaining = ABSOLUTE_TIMEOUT - (now - sessionStart.value);
-    const idleRemaining = IDLE_TIMEOUT - (now - lastActive.value);
-    const remaining = Math.min(absoluteRemaining, idleRemaining);
+    const remaining = ABSOLUTE_TIMEOUT - (now - sessionStart.value);
 
     timeRemaining.value = Math.max(0, remaining);
 
@@ -131,22 +120,22 @@ export function useSessionManager({
   const extendSession = async () => {
     try {
       await supabase.auth.refreshSession();
+      sessionStart.value = Date.now();
+      store?.commit("SET_SESSION", { startedAt: sessionStart.value });
+      store?.dispatch("logSessionEvent", { type: "SESSION_EXTENDED" });
+      warningShown.value = false;
+      onHideWarning?.();
     } catch (e) {
       if (process.env.NODE_ENV !== "production")
         console.warn("[session] refresh failed:", e.message);
     }
-    sessionStart.value = Date.now();
-    store?.commit("SET_SESSION", { startedAt: sessionStart.value });
-    store?.dispatch("logSessionEvent", { type: "SESSION_EXTENDED" });
-    warningShown.value = false;
-    onHideWarning?.();
   };
 
   const performLogout = async (reason = "manual") => {
     clearInterval(intervalId);
     window.removeEventListener("storage", onStorageChange);
     window.removeEventListener("online", onOnline);
-    recordSessionEnd(reason);
+    await recordSessionEnd(reason);
     try {
       await supabase.auth.signOut();
     } catch (e) {
@@ -185,7 +174,6 @@ export function useSessionManager({
     timeRemaining,
     warningShown,
     sessionStart,
-    lastActive,
   };
 }
 
