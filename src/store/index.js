@@ -65,7 +65,7 @@ export default createStore({
     async loadAdmin({ commit }, user) {
       try {
         const { supabase } = await import('@/lib/supabase');
-        const { getDomain } = await import('@/helpers');
+        const { getDomain } = await import('@/utils/helpers');
         const { setAuditContext, auditLog, AUDIT_EVENTS } = await import('@/services/auditService');
 
         commit('SET_USER', user);

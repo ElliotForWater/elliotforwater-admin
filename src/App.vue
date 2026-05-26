@@ -28,7 +28,7 @@ import AdminView from '@/views/AdminView.vue';
 import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal.vue';
 import { supabase } from '@/lib/supabase';
 import { useSessionManager } from '@/services/sessionService';
-import { recordSessionStart } from '@/services/sessionAnalytics';
+import { recordSessionStart, recordSessionEnd } from '@/services/sessionAnalytics';
 import { auditLog, AUDIT_EVENTS } from '@/services/auditService';
 
 const store = useStore();

@@ -39,55 +39,36 @@ export const FILE_LIMITS = {
 
 // ─── Sanitization ─────────────────────────────────────────────────────────────
 
-/**
- * Sanitize a label by removing HTML tags and dangerous characters.
- * Uses regex-based sanitization that works in both browser and Deno environments.
- */
-export function sanitizeLabel(text: string): string {
-  // Strip all HTML tags and remove dangerous characters
+export function sanitizeLabel(text) {
   return text.replace(/<[^>]*>/g, '').replace(/[<>"'&]/g, '').trim();
 }
 
 // ─── URL validation ───────────────────────────────────────────────────────────
 
-export interface ValidationResult {
-  valid: boolean;
-  url?: string;
-  error?: string;
-  upgraded?: boolean;
-}
-
-/**
- * Validate and normalize a URL.
- * Works in both browser and Deno environments.
- */
-export function validateURL(raw: string): ValidationResult {
+export function validateURL(raw) {
   const trimmed = raw.trim();
 
   if (!trimmed) return { valid: false, error: 'URL is required.' };
   if (trimmed.length > URL_MAX_LENGTH) return { valid: false, error: `URL must be under ${URL_MAX_LENGTH} characters.` };
 
-  // Decode to catch encoding bypasses before pattern checks
-  let decoded: string;
+  let decoded;
   try {
     decoded = decodeURIComponent(trimmed);
   } catch {
     decoded = trimmed;
   }
 
-  // Check malicious patterns on both raw and decoded URL
   for (const pattern of MALICIOUS_PATTERNS) {
     if (pattern.test(trimmed) || pattern.test(decoded)) {
       return { valid: false, error: 'URL contains unsafe content.' };
     }
   }
 
-  // Auto-upgrade HTTP → HTTPS
   const upgraded = trimmed.startsWith('http://');
   const normalized = upgraded ? trimmed.replace('http://', 'https://') : trimmed;
   const withProtocol = normalized.startsWith('https://') ? normalized : `https://${normalized}`;
 
-  let parsed: URL;
+  let parsed;
   try {
     parsed = new URL(withProtocol);
   } catch {
@@ -99,7 +80,6 @@ export function validateURL(raw: string): ValidationResult {
     return { valid: false, error: 'URL must use http or https.' };
   }
 
-  // Must have a real hostname (not just localhost or IP for production links)
   if (!parsed.hostname || !parsed.hostname.includes('.')) {
     return { valid: false, error: 'URL must have a valid domain.' };
   }
@@ -109,10 +89,7 @@ export function validateURL(raw: string): ValidationResult {
 
 // ─── Link categorization ──────────────────────────────────────────────────────
 
-/**
- * Categorize a link based on its hostname.
- */
-export function categorizeLink(url: string): string {
+export function categorizeLink(url) {
   try {
     const hostname = new URL(url).hostname.toLowerCase();
     if (/docs?\.|wiki\.|confluence/i.test(hostname)) return 'docs';
