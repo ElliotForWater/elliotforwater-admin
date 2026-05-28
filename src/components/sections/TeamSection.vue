@@ -30,7 +30,6 @@
               <div class="text-sm font-medium">{{ member.full_name || member.email }}</div>
               <div class="text-xs text-on-surface-variant">{{ member.email }}</div>
             </div>
-            <div class="text-[11px] text-on-surface-variant ml-auto whitespace-nowrap">{{ formatDate(member.created_at) }}</div>
           </div>
         </div>
       </Card>
@@ -43,7 +42,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import Card from '@/components/ui/Card.vue';
 import { supabase } from '@/lib/supabase';
-import { formatDate, getInitials, getDomain } from '@/utils/helpers';
+import { getInitials, getDomain } from '@/utils/helpers';
 
 const store = useStore();
 const user = computed(() => store.state.user);
