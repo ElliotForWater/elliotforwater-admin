@@ -13,8 +13,8 @@
         </div>
 
         <div v-else-if="error" class="text-center py-12 text-on-surface-variant">
-          <p class="text-[13px]">The <strong>profiles</strong> table doesn't exist yet.</p>
-          <p class="text-[13px] mt-2">Create it in Supabase and the extension will populate it when users sign in.</p>
+          <p class="text-[13px] font-medium">Could not load team members.</p>
+          <p class="text-[11px] mt-2 text-red-400 font-mono break-all">{{ errorMessage }}</p>
         </div>
 
         <div v-else-if="members.length === 0" class="text-center py-12 text-on-surface-variant">
@@ -51,6 +51,7 @@ const company = computed(() => store.state.company);
 const members = ref([]);
 const loading = ref(true);
 const error = ref(false);
+const errorMessage = ref('');
 
 onMounted(async () => {
   try {
@@ -58,16 +59,19 @@ onMounted(async () => {
     const { data, error: err } = await supabase
       .from('profiles')
       .select('*')
-      .eq('email_domain', domain)
-      .order('created_at', { ascending: false });
+      .ilike('email', `%@${domain}`)
+      .order('updated_at', { ascending: false });
 
     if (err) {
       error.value = true;
+      errorMessage.value = err.message || JSON.stringify(err);
+      console.error('[TeamSection] Supabase error:', err);
     } else {
       members.value = data || [];
     }
   } catch (e) {
     error.value = true;
+    errorMessage.value = e.message || String(e);
     console.error('[TeamSection] Failed to load team:', e);
   } finally {
     loading.value = false;
