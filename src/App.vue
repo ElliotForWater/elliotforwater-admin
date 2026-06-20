@@ -93,7 +93,7 @@ onMounted(async () => {
       store.commit('SET_AUTH_STATE', 'login');
     }
   } catch (e) {
-    if (process.env.NODE_ENV !== 'production') console.warn('[getSession]', e);
+    console.error('[getSession]', e);
     store.commit('SET_STATUS', { type: 'error', message: 'Could not connect to authentication. Please refresh and try again.' });
     store.commit('SET_AUTH_STATE', 'login');
   }

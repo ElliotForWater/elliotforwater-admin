@@ -108,7 +108,7 @@ export default createStore({
         setAuditContext(user.id, profile.id);
         await auditLog(AUDIT_EVENTS.USER_LOGIN, { email: user.email, domain });
       } catch (e) {
-        if (process.env.NODE_ENV !== 'production') console.warn('[loadAdmin]', e);
+        console.error('[loadAdmin]', e);
         commit('SET_STATUS', { type: 'error', message: 'Could not load your admin data. Please refresh and try again.' });
         commit('SET_AUTH_STATE', 'login');
       }
