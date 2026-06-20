@@ -57,10 +57,7 @@ onMounted(async () => {
   try {
     const domain = company.value?.email_domain || getDomain(user.value?.email);
     const { data, error: err } = await supabase
-      .from('profiles')
-      .select('*')
-      .ilike('email', `%@${domain}`)
-      .order('updated_at', { ascending: false });
+      .rpc('get_team_members', { p_domain: domain });
 
     if (err) {
       error.value = true;
