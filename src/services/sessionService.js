@@ -141,9 +141,9 @@ export function useSessionManager({
       if (process.env.NODE_ENV !== "production")
         console.warn("[session] signOut error:", e.message);
     }
+    // Clear everything — page is about to reload so nothing needs preserving
+    localStorage.clear();
     sessionStorage.clear();
-    localStorage.removeItem("elliotforwater-admin");
-    // Hard redirect to clean URL — clears the OAuth hash and guarantees a fresh session check
     window.location.replace('/');
   };
 
