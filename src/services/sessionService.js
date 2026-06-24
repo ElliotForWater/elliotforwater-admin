@@ -137,13 +137,16 @@ export function useSessionManager({
     window.removeEventListener("online", onOnline);
     await recordSessionEnd(reason);
     try {
-      await supabase.auth.signOut();
+      // scope: 'local' guarantees the local session is cleared even if the server call fails
+      await supabase.auth.signOut({ scope: 'local' });
     } catch (e) {
       if (process.env.NODE_ENV !== "production")
         console.warn("[session] signOut error:", e.message);
     }
     sessionStorage.clear();
     localStorage.removeItem("elliotforwater-admin");
+    // Strip the URL hash so Supabase doesn't re-detect the OAuth token and re-sign-in
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
     store?.dispatch("endSession", reason);
     onLogout?.(reason);
   };
