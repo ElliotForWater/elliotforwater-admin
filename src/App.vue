@@ -46,14 +46,6 @@ const { extendSession, performLogout, timeRemaining } = useSessionManager({
   onHideWarning: () => {
     showSessionWarning.value = false;
   },
-  onLogout: async (reason) => {
-    await auditLog(AUDIT_EVENTS.USER_LOGOUT, { reason });
-    showSessionWarning.value = false;
-    store.commit('SET_AUTH_STATE', 'login');
-    if (reason !== 'manual') {
-      store.commit('SET_STATUS', { type: 'error', message: 'You were signed out due to inactivity.' });
-    }
-  },
 });
 
 // Make session manager available to child components (e.g. Sidebar)

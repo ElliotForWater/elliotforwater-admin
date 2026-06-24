@@ -14,7 +14,6 @@ const MAX_FINGERPRINT_MISMATCHES = 3; // alert after this many mismatches
 
 export function useSessionManager({
   store,
-  onLogout,
   onShowWarning,
   onHideWarning,
 } = {}) {
