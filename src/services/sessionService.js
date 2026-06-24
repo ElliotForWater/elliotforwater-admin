@@ -134,14 +134,8 @@ export function useSessionManager({
     clearInterval(intervalId);
     window.removeEventListener("storage", onStorageChange);
     window.removeEventListener("online", onOnline);
-    await recordSessionEnd(reason);
-    try {
-      await supabase.auth.signOut({ scope: 'local' });
-    } catch (e) {
-      if (process.env.NODE_ENV !== "production")
-        console.warn("[session] signOut error:", e.message);
-    }
-    // Clear everything — page is about to reload so nothing needs preserving
+    try { await recordSessionEnd(reason); } catch (e) { /* ignore */ }
+    try { await supabase.auth.signOut({ scope: 'local' }); } catch (e) { /* ignore */ }
     localStorage.clear();
     sessionStorage.clear();
     window.location.replace('/');
