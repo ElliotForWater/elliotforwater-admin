@@ -65,17 +65,17 @@
 </template>
 
 <script setup>
-import { ref, computed, inject, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
 import { getInitials, getDomain } from '@/utils/helpers';
 import LogoutConfirmModal from '@/components/ui/LogoutConfirmModal.vue';
 import { getAnalytics, formatDuration } from '@/services/sessionAnalytics';
+import { supabase } from '@/lib/supabase';
 
 defineProps({ open: Boolean });
 const emit = defineEmits(['close']);
 
 const store = useStore();
-const sessionManager = inject('sessionManager', null);
 
 const user = computed(() => store.state.user);
 const currentSection = computed(() => store.state.currentSection);
@@ -118,8 +118,9 @@ const navigate = (section) => {
 
 const onLogoutConfirmed = async () => {
   showLogoutConfirm.value = false;
-  if (sessionManager) {
-    await sessionManager.performLogout('manual');
-  }
+  try { await supabase.auth.signOut({ scope: 'local' }); } catch (e) { /* ignore */ }
+  localStorage.clear();
+  sessionStorage.clear();
+  window.location.replace('/');
 };
 </script>
