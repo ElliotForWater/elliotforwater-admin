@@ -69,7 +69,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
 import { getInitials, getDomain } from '@/utils/helpers';
 import LogoutConfirmModal from '@/components/ui/LogoutConfirmModal.vue';
-import { getAnalytics, formatDuration } from '@/services/sessionAnalytics';
+import { getAnalytics, formatDuration, recordSessionEnd } from '@/services/sessionAnalytics';
 import { supabase } from '@/lib/supabase';
 
 defineProps({ open: Boolean });
@@ -118,9 +118,11 @@ const navigate = (section) => {
 
 const onLogoutConfirmed = async () => {
   showLogoutConfirm.value = false;
-  try { await supabase.auth.signOut({ scope: 'local' }); } catch (e) { /* ignore */ }
-  localStorage.clear();
-  sessionStorage.clear();
-  window.location.replace('/');
+  try { await recordSessionEnd('manual'); } catch (e) { /* ignore */ }
+  try { await supabase.auth.signOut(); } catch (e) { /* ignore */ }
+  localStorage.removeItem('elliotforwater-admin');
+  store.commit('SET_USER', null);
+  store.commit('SET_COMPANY', null);
+  store.commit('SET_AUTH_STATE', 'login');
 };
 </script>
