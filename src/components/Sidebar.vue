@@ -50,7 +50,7 @@
 
       <button
         class="w-full py-1.5 border border-outline rounded-card text-[13px] text-on-surface-variant cursor-pointer transition-colors hover:border-error hover:text-error"
-        @click="onLogoutConfirmed"
+        @click="() => { alert('clicked'); onLogoutConfirmed(); }"
       >
         Sign out
       </button>
