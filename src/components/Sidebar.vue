@@ -49,8 +49,8 @@
       <div v-else class="mb-2.5"></div>
 
       <button
+        id="sign-out-btn"
         class="w-full py-1.5 border border-outline rounded-card text-[13px] text-on-surface-variant cursor-pointer transition-colors hover:border-error hover:text-error"
-        @click="() => { alert('clicked'); onLogoutConfirmed(); }"
       >
         Sign out
       </button>
@@ -100,7 +100,20 @@ const loadAnalytics = async () => {
   analytics.value = await getAnalytics(store.state.user?.id);
 };
 const ageTick = setInterval(updateSessionAge, 60_000);
-onMounted(() => { updateSessionAge(); loadAnalytics(); });
+onMounted(() => {
+  updateSessionAge();
+  loadAnalytics();
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.closest('#sign-out-btn')) {
+      e.preventDefault();
+      supabase.auth.signOut().finally(() => {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = '/';
+      });
+    }
+  });
+});
 onUnmounted(() => clearInterval(ageTick));
 
 const navItems = [
