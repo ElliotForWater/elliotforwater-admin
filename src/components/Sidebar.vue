@@ -56,21 +56,13 @@
       </button>
     </div>
   </aside>
-
-  <LogoutConfirmModal
-    v-if="showLogoutConfirm"
-    @confirm="onLogoutConfirmed"
-    @cancel="showLogoutConfirm = false"
-  />
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
 import { getInitials, getDomain } from '@/utils/helpers';
-import LogoutConfirmModal from '@/components/ui/LogoutConfirmModal.vue';
-import { getAnalytics, formatDuration, recordSessionEnd } from '@/services/sessionAnalytics';
-import { supabase } from '@/lib/supabase';
+import { getAnalytics, formatDuration } from '@/services/sessionAnalytics';
 
 defineProps({ open: Boolean });
 const emit = defineEmits(['close']);
@@ -85,8 +77,6 @@ const userEmail = computed(() => user.value?.email || '');
 const initials = computed(() => getInitials(userName.value));
 const domain = computed(() => getDomain(userEmail.value));
 
-const showLogoutConfirm = ref(false);
-
 // Session age display (e.g. "2h 15m")
 const sessionAge = ref('');
 const updateSessionAge = () => {
@@ -100,20 +90,7 @@ const loadAnalytics = async () => {
   analytics.value = await getAnalytics(store.state.user?.id);
 };
 const ageTick = setInterval(updateSessionAge, 60_000);
-onMounted(() => {
-  updateSessionAge();
-  loadAnalytics();
-  document.addEventListener('click', (e) => {
-    if (e.target && e.target.closest('#sign-out-btn')) {
-      e.preventDefault();
-      supabase.auth.signOut().finally(() => {
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.href = '/';
-      });
-    }
-  });
-});
+onMounted(() => { updateSessionAge(); loadAnalytics(); });
 onUnmounted(() => clearInterval(ageTick));
 
 const navItems = [
@@ -129,13 +106,4 @@ const navigate = (section) => {
   emit('close');
 };
 
-const onLogoutConfirmed = async () => {
-  showLogoutConfirm.value = false;
-  try { await recordSessionEnd('manual'); } catch (e) { /* ignore */ }
-  try { await supabase.auth.signOut(); } catch (e) { /* ignore */ }
-  localStorage.removeItem('elliotforwater-admin');
-  store.commit('SET_USER', null);
-  store.commit('SET_COMPANY', null);
-  store.commit('SET_AUTH_STATE', 'login');
-};
 </script>
