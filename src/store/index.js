@@ -84,9 +84,11 @@ export default createStore({
           return;
         }
 
-        if (profile.admin_email && profile.admin_email !== user.email) {
+        // Fail closed: no manager_email set means no one may access admin for this company.
+        // Case-sensitive by design (normalization tracked as open issue #4).
+        if (!profile.manager_email || profile.manager_email !== user.email) {
           await auditLog(AUDIT_EVENTS.PERMISSION_DENIED, { email: user.email, domain });
-          await supabase.auth.signOut();
+          await supabase.auth.signOut({ scope: 'global' });
           commit('SET_AUTH_STATE', 'not-authorized');
           return;
         }

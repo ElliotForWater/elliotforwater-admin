@@ -70,7 +70,12 @@ const signIn = async () => {
   try {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: process.env.VUE_APP_OAUTH_REDIRECT_URL },
+      options: {
+        redirectTo: process.env.VUE_APP_OAUTH_REDIRECT_URL,
+        queryParams: {
+          prompt: 'select_account',
+        },
+      },
     });
   } catch (e) {
     signingIn.value = false;
@@ -79,6 +84,6 @@ const signIn = async () => {
 };
 
 const signOut = async () => {
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: 'global' });
 };
 </script>
