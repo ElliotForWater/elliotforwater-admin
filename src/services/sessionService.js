@@ -134,10 +134,12 @@ export function useSessionManager({
     clearInterval(intervalId);
     window.removeEventListener("storage", onStorageChange);
     window.removeEventListener("online", onOnline);
+
     try { await recordSessionEnd(reason); } catch (e) { /* ignore */ }
+    // scope:'local' ends only this admin session; the user's extension session
+    // (separate origin, separate token) is intentionally left intact.
     try { await supabase.auth.signOut({ scope: 'local' }); } catch (e) { /* ignore */ }
-    localStorage.clear();
-    sessionStorage.clear();
+    clearLocalSession();
     window.location.replace('/');
   };
 
@@ -168,6 +170,14 @@ export function useSessionManager({
     warningShown,
     sessionStart,
   };
+}
+
+// Clears everything session-related from this origin's storage. Synchronous on purpose — this
+// is what's safe to call from a beforeunload handler, unlike the async signOut() network call,
+// which browsers don't guarantee will finish before the page unloads.
+export function clearLocalSession() {
+  localStorage.clear();
+  sessionStorage.clear();
 }
 
 async function reportEvent(event, fingerprint = null) {

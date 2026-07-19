@@ -27,7 +27,7 @@ import LoginView from '@/views/LoginView.vue';
 import AdminView from '@/views/AdminView.vue';
 import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal.vue';
 import { supabase } from '@/lib/supabase';
-import { useSessionManager } from '@/services/sessionService';
+import { useSessionManager, clearLocalSession } from '@/services/sessionService';
 import { recordSessionStart, recordSessionEnd } from '@/services/sessionAnalytics';
 
 const store = useStore();
@@ -81,6 +81,32 @@ onMounted(async () => {
         recordSessionStart(store.state.user?.id, fingerprint);
       }
     } else {
+      // Opened from the extension's admin handoff — the user just signed in with Google
+      // there, so silently re-authenticate instead of making them do it again. `prompt:
+      // none` completes with no UI if Google already has an active session + prior
+      // consent for this app; otherwise it redirects back here with no session, and we
+      // fall through to the normal login screen below.
+      const handoffParams = new URLSearchParams(window.location.search);
+      const cameFromExtension = handoffParams.get('ref') === 'extension';
+      if (cameFromExtension) {
+        // Pin the silent re-auth to the exact Google account the extension is signed in as —
+        // without login_hint, prompt:none falls back to whichever Google session the browser
+        // considers active, which isn't necessarily this one if more than one is signed in.
+        const loginHint = handoffParams.get('email');
+        try {
+          const { error: oauthError } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+              redirectTo: window.location.origin,
+              queryParams: { prompt: 'none', ...(loginHint ? { login_hint: loginHint } : {}) },
+            },
+          });
+          if (oauthError) throw oauthError;
+          return;
+        } catch (e) {
+          console.error('[silent reauth]', e);
+        }
+      }
       store.commit('SET_AUTH_STATE', 'login');
     }
   } catch (e) {
@@ -92,9 +118,20 @@ onMounted(async () => {
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session?.user && store.state.authState !== 'admin') {
       await store.dispatch('loadAdmin', session.user);
-      // If "Remember me" is off, sign out when the tab closes
+      // If "Remember me" is off, sign out when the tab closes. Browsers don't guarantee async
+      // work (the signOut() network call) finishes before the page unloads, so that part is
+      // best-effort only — clearLocalSession() is synchronous and is what actually guarantees
+      // this browser won't still be signed in next time it's opened, regardless of whether the
+      // network call below completes in time.
       if (localStorage.getItem('efw-remember-me') === 'false') {
-        window.addEventListener('beforeunload', () => supabase.auth.signOut(), { once: true });
+        window.addEventListener(
+          'beforeunload',
+          () => {
+            clearLocalSession();
+            supabase.auth.signOut({ scope: 'global' });
+          },
+          { once: true },
+        );
       }
     } else if (event === 'SIGNED_OUT') {
       await recordSessionEnd('server-signout');
