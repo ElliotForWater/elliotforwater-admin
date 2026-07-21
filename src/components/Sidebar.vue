@@ -50,16 +50,19 @@
 
       <button
         id="sign-out-btn"
-        class="w-full py-1.5 border border-outline rounded-card text-[13px] text-on-surface-variant cursor-pointer transition-colors hover:border-error hover:text-error"
+        class="w-full py-1.5 border border-outline rounded-card text-[13px] text-on-surface-variant cursor-pointer transition-colors hover:border-error hover:text-error disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+        :disabled="loggingOut"
+        @click="signOut"
       >
-        Sign out
+        <span v-if="loggingOut" class="spinner w-3.5 h-3.5"></span>
+        {{ loggingOut ? 'Signing out…' : 'Sign out' }}
       </button>
     </div>
   </aside>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, inject } from 'vue';
 import { useStore } from 'vuex';
 import { getInitials, getDomain } from '@/utils/helpers';
 import { getAnalytics, formatDuration } from '@/services/sessionAnalytics';
@@ -68,6 +71,7 @@ defineProps({ open: Boolean });
 const emit = defineEmits(['close']);
 
 const store = useStore();
+const { performLogout, loggingOut } = inject('sessionManager');
 
 const user = computed(() => store.state.user);
 const currentSection = computed(() => store.state.currentSection);
@@ -105,5 +109,7 @@ const navigate = (section) => {
   store.commit('CLEAR_STATUS');
   emit('close');
 };
+
+const signOut = () => performLogout('manual');
 
 </script>
