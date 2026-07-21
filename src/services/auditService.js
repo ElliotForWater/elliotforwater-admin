@@ -1,19 +1,19 @@
-import { supabase } from '@/lib/supabase';
-import { SESSION_ID } from '@/services/sessionAnalytics';
+import { supabase } from "@/lib/supabase";
+import { SESSION_ID } from "@/services/sessionAnalytics";
 
 export const AUDIT_EVENTS = {
-  USER_LOGIN: 'USER_LOGIN',
-  USER_LOGOUT: 'USER_LOGOUT',
-  LOGIN_FAILED: 'LOGIN_FAILED',
-  SIGN_OUT_FAILED: 'SIGN_OUT_FAILED',
-  DATA_CREATED: 'DATA_CREATED',
-  DATA_UPDATED: 'DATA_UPDATED',
-  DATA_DELETED: 'DATA_DELETED',
-  FILE_UPLOADED: 'FILE_UPLOADED',
-  SETTINGS_CHANGED: 'SETTINGS_CHANGED',
-  PERMISSION_DENIED: 'PERMISSION_DENIED',
-  SECURITY_ALERT: 'SECURITY_ALERT',
-  ERROR: 'ERROR',
+  USER_LOGIN: "USER_LOGIN",
+  USER_LOGOUT: "USER_LOGOUT",
+  LOGIN_FAILED: "LOGIN_FAILED",
+  SIGN_OUT_FAILED: "SIGN_OUT_FAILED",
+  DATA_CREATED: "DATA_CREATED",
+  DATA_UPDATED: "DATA_UPDATED",
+  DATA_DELETED: "DATA_DELETED",
+  FILE_UPLOADED: "FILE_UPLOADED",
+  SETTINGS_CHANGED: "SETTINGS_CHANGED",
+  PERMISSION_DENIED: "PERMISSION_DENIED",
+  SECURITY_ALERT: "SECURITY_ALERT",
+  ERROR: "ERROR",
 };
 
 let _userId = null;
@@ -36,8 +36,9 @@ export async function auditLog(eventType, actionData = {}) {
       session_id: SESSION_ID,
     };
 
-    const { error } = await supabase.from('audit_logs').insert(entry);
-    if (error && process.env.NODE_ENV !== 'production') console.warn('[audit] insert failed:', error.code);
+    const { error } = await supabase.from("audit_logs").insert(entry);
+    if (error && process.env.NODE_ENV !== "production")
+      console.warn("[audit] insert failed:", error.code);
   } catch {
     // silent in production
   }
@@ -45,7 +46,14 @@ export async function auditLog(eventType, actionData = {}) {
 
 function sanitizeData(data) {
   const sanitized = { ...data };
-  const SENSITIVE = ['password', 'token', 'api_key', 'secret', 'access_token', 'refresh_token'];
+  const SENSITIVE = [
+    "password",
+    "token",
+    "api_key",
+    "secret",
+    "access_token",
+    "refresh_token",
+  ];
   for (const key of SENSITIVE) delete sanitized[key];
   return sanitized;
 }

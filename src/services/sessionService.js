@@ -187,9 +187,9 @@ export function useSessionManager({
   };
 }
 
-// Clears everything session-related from this origin's storage. Synchronous on purpose — this
-// is what's safe to call from a beforeunload handler, unlike the async signOut() network call,
-// which browsers don't guarantee will finish before the page unloads.
+/**
+ * Synchronous clear of session storage — safe for beforeunload, unlike async signOut().
+ */
 export function clearLocalSession() {
   const supabaseUrl = process.env.VUE_APP_SUPABASE_URL;
   if (supabaseUrl) {

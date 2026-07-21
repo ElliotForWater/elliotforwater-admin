@@ -92,8 +92,7 @@ export default createStore({
           return;
         }
 
-        // Fail closed: no manager_email set means no one may access admin for this company.
-        // Case-sensitive by design (normalization tracked as open issue #4).
+        // manager_email is the correct email for the admin user in the database
         if (!profile.manager_email || profile.manager_email !== user.email) {
           await auditLog(AUDIT_EVENTS.PERMISSION_DENIED, {
             email: user.email,
