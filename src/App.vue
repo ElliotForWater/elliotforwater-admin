@@ -95,8 +95,6 @@ onMounted(async () => {
   const loginHint = hashParams.get("email") || handoffParams.get("email");
 
   if (cameFromExtension || loginHint) {
-    // Immediately scrub PII and handoff indicators from the URL to prevent leakage via
-    // browser history, server logs, or Referer headers.
     const url = new URL(window.location.href);
     let urlChanged = false;
 
