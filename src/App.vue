@@ -87,14 +87,29 @@ const onSessionLogout = async () => {
 };
 
 onMounted(async () => {
-  const handoffParams = new URLSearchParams(window.location.search);
+  const searchParams = new URLSearchParams(window.location.search);
   const hashParams = new URLSearchParams(
     window.location.hash.replace(/^#/, "")
   );
-  const cameFromExtension = handoffParams.get("ref") === "extension";
-  const loginHint = hashParams.get("email") || handoffParams.get("email");
 
-  if (cameFromExtension || loginHint) {
+  const rawCameFromExtension = searchParams.get("ref") === "extension";
+  const rawLoginHint = hashParams.get("email") || searchParams.get("email");
+
+  if (rawCameFromExtension) sessionStorage.setItem("extension_handoff", "true");
+  if (rawLoginHint) sessionStorage.setItem("login_hint", rawLoginHint);
+
+  const cameFromExtension =
+    rawCameFromExtension ||
+    sessionStorage.getItem("extension_handoff") === "true";
+  const loginHint = rawLoginHint || sessionStorage.getItem("login_hint");
+
+  // Detect if we're returning from a silent auth attempt that failed
+  const hasError = searchParams.has("error") || hashParams.has("error");
+  if (hasError && cameFromExtension) {
+    sessionStorage.setItem("silent_auth_tried", "true");
+  }
+
+  if (rawCameFromExtension || rawLoginHint) {
     const url = new URL(window.location.href);
     let urlChanged = false;
 
@@ -134,7 +149,11 @@ onMounted(async () => {
         const fingerprint = store.state.session?.fingerprint;
         recordSessionStart(store.state.user?.id, fingerprint);
       }
-    } else if (cameFromExtension) {
+    } else if (
+      cameFromExtension &&
+      sessionStorage.getItem("silent_auth_tried") !== "true"
+    ) {
+      sessionStorage.setItem("silent_auth_tried", "true");
       try {
         const { error: oauthError } = await supabase.auth.signInWithOAuth({
           provider: "google",
@@ -171,6 +190,8 @@ onMounted(async () => {
       session?.user &&
       store.state.authState !== "admin"
     ) {
+      sessionStorage.removeItem("extension_handoff");
+      sessionStorage.removeItem("silent_auth_tried");
       await store.dispatch("loadAdmin", session.user);
       if (localStorage.getItem("efw-remember-me") === "false") {
         window.addEventListener(

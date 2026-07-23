@@ -93,7 +93,7 @@
         :disabled="loggingOut"
         @click="signOut"
       >
-        <span v-if="loggingOut" class="spinner w-3.5 h-3.5"></span>
+        <span v-if="loggingOut" class="spinner w-4 h-4"></span>
         {{ loggingOut ? "Signing out…" : "Sign out" }}
       </button>
     </div>

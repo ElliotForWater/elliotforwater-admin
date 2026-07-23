@@ -108,17 +108,21 @@ const authState = computed(() => store.state.authState);
 const signingIn = ref(false);
 const signingOut = ref(false);
 const rememberMe = ref(localStorage.getItem("efw-remember-me") !== "false");
+const loginHint = ref(sessionStorage.getItem("login_hint"));
 
 const signIn = async () => {
   localStorage.setItem("efw-remember-me", rememberMe.value ? "true" : "false");
   signingIn.value = true;
+
   try {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: window.location.origin,
         queryParams: {
-          prompt: "select_account",
+          ...(loginHint.value
+            ? { login_hint: loginHint.value }
+            : { prompt: "select_account" }),
         },
       },
     });
