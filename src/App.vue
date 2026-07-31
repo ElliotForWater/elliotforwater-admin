@@ -1,12 +1,21 @@
 <template>
   <!-- Loading -->
-  <div v-if="authState === 'loading'" class="min-h-screen flex flex-col items-center justify-center gap-3 text-on-surface-variant">
+  <div
+    v-if="authState === 'loading'"
+    class="min-h-screen flex flex-col items-center justify-center gap-3 text-on-surface-variant"
+  >
     <div class="spinner w-5 h-5"></div>
     <span>Loading…</span>
   </div>
 
   <!-- Login / Not registered / Not authorized -->
-  <LoginView v-else-if="authState === 'login' || authState === 'not-registered' || authState === 'not-authorized'" />
+  <LoginView
+    v-else-if="
+      authState === 'login' ||
+      authState === 'not-registered' ||
+      authState === 'not-authorized'
+    "
+  />
 
   <!-- Admin -->
   <AdminView v-else-if="authState === 'admin'" />
@@ -21,14 +30,22 @@
 </template>
 
 <script setup>
-import { ref, computed, provide, watch, onMounted } from 'vue';
-import { useStore } from 'vuex';
-import LoginView from '@/views/LoginView.vue';
-import AdminView from '@/views/AdminView.vue';
-import SessionTimeoutModal from '@/components/ui/SessionTimeoutModal.vue';
-import { supabase } from '@/lib/supabase';
-import { useSessionManager } from '@/services/sessionService';
-import { recordSessionStart, recordSessionEnd } from '@/services/sessionAnalytics';
+import { ref, computed, provide, watch, onMounted } from "vue";
+import { useStore } from "vuex";
+import LoginView from "@/views/LoginView.vue";
+import AdminView from "@/views/AdminView.vue";
+import SessionTimeoutModal from "@/components/ui/SessionTimeoutModal.vue";
+import { supabase } from "@/lib/supabase";
+import {
+  useSessionManager,
+  clearLocalSession,
+  signOutWithTimeout,
+} from "@/services/sessionService";
+import {
+  recordSessionStart,
+  recordSessionEnd,
+} from "@/services/sessionAnalytics";
+import { auditLog, AUDIT_EVENTS } from "@/services/auditService";
 
 const store = useStore();
 const authState = computed(() => store.state.authState);
@@ -36,24 +53,25 @@ const authState = computed(() => store.state.authState);
 const showSessionWarning = ref(false);
 const sessionTimeRemaining = ref(0);
 
-const { extendSession, performLogout, timeRemaining } = useSessionManager({
-  store,
-  onShowWarning: () => {
-    sessionTimeRemaining.value = timeRemaining.value;
-    showSessionWarning.value = true;
-  },
-  onHideWarning: () => {
-    showSessionWarning.value = false;
-  },
-});
+const { extendSession, performLogout, timeRemaining, loggingOut } =
+  useSessionManager({
+    store,
+    onShowWarning: () => {
+      sessionTimeRemaining.value = timeRemaining.value;
+      showSessionWarning.value = true;
+    },
+    onHideWarning: () => {
+      showSessionWarning.value = false;
+    },
+  });
 
 // Make session manager available to child components (e.g. Sidebar)
-provide('sessionManager', { performLogout, extendSession });
+provide("sessionManager", { performLogout, extendSession, loggingOut });
 
 // Start session tracking when user logs in
 watch(authState, (state, prev) => {
-  if (state === 'admin' && prev !== 'admin') {
-    store.dispatch('startSession');
+  if (state === "admin" && prev !== "admin") {
+    store.dispatch("startSession");
     const fingerprint = store.state.session?.fingerprint;
     recordSessionStart(store.state.user?.id, fingerprint);
   }
@@ -65,40 +83,135 @@ const onExtendSession = async () => {
 };
 
 const onSessionLogout = async () => {
-  await performLogout('manual');
+  await performLogout("manual");
 };
 
 onMounted(async () => {
+  const searchParams = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(
+    window.location.hash.replace(/^#/, "")
+  );
+
+  const rawCameFromExtension = searchParams.get("ref") === "extension";
+  const rawLoginHint = hashParams.get("email") || searchParams.get("email");
+
+  if (rawCameFromExtension) sessionStorage.setItem("extension_handoff", "true");
+  if (rawLoginHint) sessionStorage.setItem("login_hint", rawLoginHint);
+
+  const cameFromExtension =
+    rawCameFromExtension ||
+    sessionStorage.getItem("extension_handoff") === "true";
+  const loginHint = rawLoginHint || sessionStorage.getItem("login_hint");
+
+  // Detect if we're returning from a silent auth attempt that failed
+  const hasError = searchParams.has("error") || hashParams.has("error");
+  if (hasError && cameFromExtension) {
+    sessionStorage.setItem("silent_auth_tried", "true");
+  }
+
+  if (rawCameFromExtension || rawLoginHint) {
+    const url = new URL(window.location.href);
+    let urlChanged = false;
+
+    ["email", "ref"].forEach((key) => {
+      if (url.searchParams.has(key)) {
+        url.searchParams.delete(key);
+        urlChanged = true;
+      }
+    });
+
+    if (url.hash.includes("email=")) {
+      const hParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+      if (hParams.has("email")) {
+        hParams.delete("email");
+        const newHash = hParams.toString();
+        url.hash = newHash ? `#${newHash}` : "";
+        urlChanged = true;
+      }
+    }
+
+    if (urlChanged) {
+      window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+    }
+  }
+
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
     if (error) throw error;
     if (session?.user) {
-      await store.dispatch('loadAdmin', session.user);
+      await store.dispatch("loadAdmin", session.user);
       // Start session tracking on page reload if already authenticated
-      if (store.state.authState === 'admin') {
-        store.dispatch('startSession');
+      if (store.state.authState === "admin") {
+        store.dispatch("startSession");
         const fingerprint = store.state.session?.fingerprint;
         recordSessionStart(store.state.user?.id, fingerprint);
       }
+    } else if (
+      cameFromExtension &&
+      sessionStorage.getItem("silent_auth_tried") !== "true"
+    ) {
+      sessionStorage.setItem("silent_auth_tried", "true");
+      try {
+        const { error: oauthError } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: window.location.origin,
+            queryParams: {
+              prompt: "none",
+              ...(loginHint ? { login_hint: loginHint } : {}),
+            },
+          },
+        });
+        if (oauthError) throw oauthError;
+        return;
+      } catch (e) {
+        console.error("[silent reauth]", e);
+        store.commit("SET_AUTH_STATE", "login");
+      }
     } else {
-      store.commit('SET_AUTH_STATE', 'login');
+      store.commit("SET_AUTH_STATE", "login");
     }
   } catch (e) {
-    console.error('[getSession]', e);
-    store.commit('SET_STATUS', { type: 'error', message: 'Could not connect to authentication. Please refresh and try again.' });
-    store.commit('SET_AUTH_STATE', 'login');
+    console.error("[getSession]", e);
+    store.commit("SET_STATUS", {
+      type: "error",
+      message:
+        "Could not connect to authentication. Please refresh and try again.",
+    });
+    store.commit("SET_AUTH_STATE", "login");
   }
 
   supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session?.user && store.state.authState !== 'admin') {
-      await store.dispatch('loadAdmin', session.user);
-      // If "Remember me" is off, sign out when the tab closes
-      if (localStorage.getItem('efw-remember-me') === 'false') {
-        window.addEventListener('beforeunload', () => supabase.auth.signOut(), { once: true });
+    if (
+      event === "SIGNED_IN" &&
+      session?.user &&
+      store.state.authState !== "admin"
+    ) {
+      sessionStorage.removeItem("extension_handoff");
+      sessionStorage.removeItem("silent_auth_tried");
+      await store.dispatch("loadAdmin", session.user);
+      if (localStorage.getItem("efw-remember-me") === "false") {
+        window.addEventListener(
+          "beforeunload",
+          () => {
+            clearLocalSession();
+            signOutWithTimeout("global").then((error) => {
+              if (error)
+                auditLog(AUDIT_EVENTS.SIGN_OUT_FAILED, {
+                  reason: error.message,
+                  context: "beforeunload",
+                });
+            });
+          },
+          { once: true }
+        );
       }
-    } else if (event === 'SIGNED_OUT') {
-      await recordSessionEnd('server-signout');
-      store.commit('SET_AUTH_STATE', 'login');
+    } else if (event === "SIGNED_OUT") {
+      await recordSessionEnd("server-signout");
+      store.commit("SET_AUTH_STATE", "login");
     }
   });
 });

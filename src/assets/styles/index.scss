@@ -53,7 +53,7 @@
 }
 
 .spinner {
-  @apply inline-block rounded-full border-2 border-outline;
+  @apply inline-block rounded-full border-2 border-solid border-outline flex-shrink-0;
   border-top-color: theme('colors.primary.DEFAULT');
   animation: spin 0.7s linear infinite;
 }
