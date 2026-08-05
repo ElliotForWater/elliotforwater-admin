@@ -5,6 +5,7 @@ import {
   getActiveSessions,
   SESSION_ID,
 } from "@/services/sessionAnalytics";
+import { auditLog, AUDIT_EVENTS } from "@/services/auditService";
 import { generateFingerprint } from "@/utils/fingerprint";
 
 const ABSOLUTE_TIMEOUT = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -21,6 +22,7 @@ export function useSessionManager({
   const warningShown = ref(false);
   const timeRemaining = ref(0);
   const fingerprintMismatches = ref(0);
+  const loggingOut = ref(false);
 
   // Multi-tab sync: if another tab signs out (removes localStorage), log out here too
   const onStorageChange = (e) => {
@@ -131,14 +133,28 @@ export function useSessionManager({
   };
 
   const performLogout = async (reason = "manual") => {
+    loggingOut.value = true;
     clearInterval(intervalId);
     window.removeEventListener("storage", onStorageChange);
     window.removeEventListener("online", onOnline);
-    try { await recordSessionEnd(reason); } catch (e) { /* ignore */ }
-    try { await supabase.auth.signOut({ scope: 'local' }); } catch (e) { /* ignore */ }
-    localStorage.clear();
-    sessionStorage.clear();
-    window.location.replace('/');
+
+    try {
+      await recordSessionEnd(reason);
+    } catch (e) {
+      /* ignore */
+    }
+    // scope:'local' ends only this admin session; the user's extension session
+    // (separate origin, separate token) is intentionally left intact.
+    const signOutError = await signOutWithTimeout("local");
+    // Always clear locally and redirect regardless — supabase-js only removes the local session
+    clearLocalSession();
+    window.location.replace("/");
+    if (signOutError) {
+      auditLog(AUDIT_EVENTS.SIGN_OUT_FAILED, {
+        reason: signOutError.message,
+        context: "performLogout",
+      });
+    }
   };
 
   const validateSession = async () => {
@@ -167,7 +183,33 @@ export function useSessionManager({
     timeRemaining,
     warningShown,
     sessionStart,
+    loggingOut,
   };
+}
+
+/**
+ * Synchronous clear of session storage — safe for beforeunload, unlike async signOut().
+ */
+export function clearLocalSession() {
+  const supabaseUrl = process.env.VUE_APP_SUPABASE_URL;
+  if (supabaseUrl) {
+    const projectRef = supabaseUrl.split(".")[0].split("//")[1];
+    localStorage.removeItem(`sb-${projectRef}-auth-token`);
+  }
+  localStorage.removeItem("elliotforwater-admin");
+  sessionStorage.removeItem("signing_in");
+}
+
+export async function signOutWithTimeout(scope, timeoutMs = 5000) {
+  return Promise.race([
+    supabase.auth.signOut({ scope }).then(({ error }) => error),
+    new Promise((resolve) =>
+      setTimeout(
+        () => resolve(new Error(`signOut timed out after ${timeoutMs}ms`)),
+        timeoutMs
+      )
+    ),
+  ]);
 }
 
 async function reportEvent(event, fingerprint = null) {
