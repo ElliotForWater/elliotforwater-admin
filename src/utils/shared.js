@@ -33,8 +33,8 @@ export const ALLOWED_MIME = new Set([
 ]);
 
 export const FILE_LIMITS = {
-  logo: 1 * 1024 * 1024,       // 1 MB
-  background: 2 * 1024 * 1024, // 2 MB
+  logo: 1 * 1024 * 1024,        // 1 MB
+  background: 10 * 1024 * 1024, // 10 MB
 };
 
 // ─── Sanitization ─────────────────────────────────────────────────────────────

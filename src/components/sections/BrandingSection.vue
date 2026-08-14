@@ -33,15 +33,15 @@
           <UploadArea
             :preview-url="bgPreview"
             icon="🌄"
-            hint="JPG, WebP — max 2MB"
+            hint="JPG, WebP — max 10MB"
             label="Background"
             :cover="true"
-            :max-bytes="2 * 1024 * 1024"
+            :max-bytes="10 * 1024 * 1024"
             :uploading="uploadingBg"
             @file-selected="onBgSelected"
             @clear="clearBg"
           />
-          <p class="field-hint mt-2.5">Replaces the default background. Use a landscape image, minimum <strong>1920×1080px</strong>. Keep file size under <strong>2MB</strong> — JPG or WebP recommended.</p>
+          <p class="field-hint mt-2.5">Replaces the default background. Use a landscape image, minimum <strong>1920×1080px</strong>. Keep file size under <strong>10MB</strong> — JPG or WebP recommended.</p>
         </Card>
       </div>
 
